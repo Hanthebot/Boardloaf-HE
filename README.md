@@ -17,6 +17,7 @@ Strongly inspired by Boardloaf and [Truestrike42](https://github.com/byungyoonc/
   - 3d printed (from yuburoll's repo, pcb outline and holes are not modified, so should be fine)
   - cheap plate cut
     - m2 3mm heat insert x 16
+    - m2 7mm standoff x 16 (can be shorter or longer a bit)
   - m2 screw x 16, m2x6 worked for me
 
 ## Features
