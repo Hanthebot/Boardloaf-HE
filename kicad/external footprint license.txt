@@ -1,0 +1,16 @@
+// inherited from yuburoll/Boardloaf
+
+isw-kbd-lib by is-watering
+	license: MIT License
+	link: https://github.com/is-watering/isw-kbd-lib
+
+Keebio-Parts.pretty by keebio
+	license: MIT License
+	link: https://github.com/keebio/Keebio-Parts.pretty
+
+// inherited and modified from byungyoonc/Truestrike42
+
+HE-Switch-1U.kicad_mod by byungyoonc
+	license: MIT License
+	link: https://github.com/byungyoonc/TrueStrike42/tree/main/hw/pcb/project-specific-library.pretty
+
