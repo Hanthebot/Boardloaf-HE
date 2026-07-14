@@ -33,9 +33,9 @@ Based on Boardloaf and strongly inspired by [TrueStrike42](https://github.com/by
 
 |Component|Qty|Price/unit|Price|
 |-|-|-|-|
-|M2 screw 6mm|16|¥4/500 ~= $0.6|$0.6|
-|M2 heat insert 3*3|16|¥4.9/100 ~= $0.7|$0.7|
-|M2 standoff 7mm + 3mm head|16|¥2.31/50 ~= $0.35|$0.35|
+|M2 screw 6mm|16|¥4/500 pcs ~= $0.6|$0.6|
+|M2 heat insert 3*3|16|¥4.9/100 pcs ~= $0.7|$0.7|
+|M2 standoff 7mm + 3mm head|16|¥2.31/50 pcs ~= $0.35|$0.35|
 - Flathead screw was used
 - Standoff can be shorter or longer - but I recommend 5mm at least
 - Case cost: $3 or more
