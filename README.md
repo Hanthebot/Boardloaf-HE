@@ -53,8 +53,7 @@ Based on Boardloaf and strongly inspired by [TrueStrike42](https://github.com/by
 
 With these things combined, you can get your own HE keyboard in about $12 excluding cables and switches.
 
-## [Building guide](GUIDE.md)
-Work in progress
+## [Build guide](GUIDE.md)
 
 ## Features
 - Supports both APC and rapid trigger
