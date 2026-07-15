@@ -1,6 +1,6 @@
 # Boardloaf-HE
 
-[Some image to be inserted]
+![boardloafhe](images/boadloafhe.jpg)
 
 Hall-effect variant of [Yuburoll's Boardloaf](https://github.com/yuburoll/Boardloaf), a 36-key split keyboard.
 
