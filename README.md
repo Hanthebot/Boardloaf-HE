@@ -67,6 +67,7 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
 - [ ] ~~Switch to blackpill mcu for better ADC (not in this repo)~~
 
 ## Remarks
+- Initial config recommendation: 30% / 20% / 20% / 10% / 10% / 20% (APC act / release; RT init dead / act offset / release offset / bottom dead)
 - Documentation
   - Further documentation in progress
   - Plate KiCad file to be uploaded
