@@ -39,14 +39,12 @@ enum via_enums {
     id_get_all_per_key = 14,
     id_get_key_calib = 15,
     id_bottom_deadzone = 16,
-    id_analog_mouse_enable = 17,
-    id_analog_mouse_curve = 18,
-    id_analog_mouse_deadzone = 19,
-    id_analog_mouse_max_speed = 20,
-    id_an_snipe_divisor = 21,
-    id_an_scroll_enable = 22,
-    id_an_repeat_enable = 23,
-    id_an_multistage_key = 24
+    id_am_curve = 17,
+    id_am_deadzone = 18,
+    id_am_max_speed = 19,
+    id_am_snipe_divisor = 20,
+    id_am_scroll_max = 21,
+    id_am_interval_ms = 22
     // clang-format on
 };
 
@@ -270,6 +268,48 @@ void via_config_set_value(uint8_t *data) {
             he_apply_key_to_all(row, col);
             break;
         }
+        case id_am_curve: {
+            he_config.an_curve_exponent = value_data[0];
+            eeprom_he_config.an_curve_exponent = value_data[0];
+            eeconfig_update_kb_datablock_field(eeprom_he_config, an_curve_exponent);
+            uprintf("am_curve=%d\n", value_data[0]);
+            break;
+        }
+        case id_am_deadzone: {
+            he_config.an_deadzone_pct = value_data[0];
+            eeprom_he_config.an_deadzone_pct = value_data[0];
+            eeconfig_update_kb_datablock_field(eeprom_he_config, an_deadzone_pct);
+            uprintf("am_deadzone=%d\n", value_data[0]);
+            break;
+        }
+        case id_am_max_speed: {
+            he_config.an_max_speed = value_data[0];
+            eeprom_he_config.an_max_speed = value_data[0];
+            eeconfig_update_kb_datablock_field(eeprom_he_config, an_max_speed);
+            uprintf("am_max_speed=%d\n", value_data[0]);
+            break;
+        }
+        case id_am_snipe_divisor: {
+            he_config.an_snipe_divisor = value_data[0];
+            eeprom_he_config.an_snipe_divisor = value_data[0];
+            eeconfig_update_kb_datablock_field(eeprom_he_config, an_snipe_divisor);
+            uprintf("am_snipe_divisor=%d\n", value_data[0]);
+            break;
+        }
+        case id_am_scroll_max: {
+            he_config.an_scroll_max = value_data[0];
+            eeprom_he_config.an_scroll_max = value_data[0];
+            eeconfig_update_kb_datablock_field(eeprom_he_config, an_scroll_max);
+            uprintf("am_scroll_max=%d\n", value_data[0]);
+            break;
+        }
+        case id_am_interval_ms: {
+            he_config.an_interval_ms = value_data[0];
+            eeprom_he_config.an_interval_ms = value_data[0];
+            eeconfig_update_kb_datablock_field(eeprom_he_config, an_interval_ms);
+            uprintf("am_interval_ms=%d\n", value_data[0]);
+            break;
+        }
         default: {
             break;
         }
@@ -379,6 +419,24 @@ void via_config_get_value(uint8_t *data) {
             value_data[5] = bottom >> 8;
             break;
         }
+        case id_am_curve:
+            value_data[0] = he_config.an_curve_exponent;
+            break;
+        case id_am_deadzone:
+            value_data[0] = he_config.an_deadzone_pct;
+            break;
+        case id_am_max_speed:
+            value_data[0] = he_config.an_max_speed;
+            break;
+        case id_am_snipe_divisor:
+            value_data[0] = he_config.an_snipe_divisor;
+            break;
+        case id_am_scroll_max:
+            value_data[0] = he_config.an_scroll_max;
+            break;
+        case id_am_interval_ms:
+            value_data[0] = he_config.an_interval_ms;
+            break;
         default: {
             break;
         }

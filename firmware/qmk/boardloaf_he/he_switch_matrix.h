@@ -35,6 +35,13 @@ typedef struct PACKED {
     uint8_t  per_key_mode_1_actuation_offset[HE_MATRIX_ROWS][MATRIX_COLS];      // per-key RT actuation offset (1..255, raw units)
     uint8_t  per_key_mode_1_release_offset[HE_MATRIX_ROWS][MATRIX_COLS];        // per-key RT release offset (1..255, raw units)
     uint16_t per_key_bottom_deadzone[HE_MATRIX_ROWS][MATRIX_COLS];              // per-key bottom deadzone (raw 0..1023 scale, 0=disabled)
+    uint8_t  an_deadzone_pct;                                                    // analog mouse deadzone % (0-100)
+    uint8_t  an_curve_exponent;                                                  // analog mouse curve exponent (1-5)
+    uint8_t  an_max_speed;                                                       // analog mouse max speed (1-127)
+    uint8_t  an_snipe_divisor;                                                   // analog snipe divisor (1-100)
+    uint8_t  an_scroll_max;                                                      // analog scroll max units
+    uint8_t  an_interval_ms;                                                     // analog mouse report interval ms
+    uint8_t  an_reserved[8];
 } eeprom_he_config_t;
 
 typedef struct {
@@ -54,6 +61,12 @@ typedef struct {
     bool     bottoming_calibration;
     bool     bottoming_calibration_starter[HE_MATRIX_ROWS][MATRIX_COLS];
     uint16_t bottoming_reading[HE_MATRIX_ROWS][MATRIX_COLS];
+    uint8_t  an_deadzone_pct;
+    uint8_t  an_curve_exponent;
+    uint8_t  an_max_speed;
+    uint8_t  an_snipe_divisor;
+    uint8_t  an_scroll_max;
+    uint8_t  an_interval_ms;
 } he_config_t;
 
 _Static_assert(sizeof(eeprom_he_config_t) == EECONFIG_KB_DATA_SIZE, "Mismatch in keyboard EECONFIG stored data");

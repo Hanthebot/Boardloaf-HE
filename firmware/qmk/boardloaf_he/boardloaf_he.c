@@ -17,6 +17,7 @@
 #include "quantum.h"
 #include "he_switch_matrix.h"
 #include "analog_common.h"
+#include "he_analog_mousekey.h"
 
 void eeconfig_init_kb(void) {
     eeprom_he_config.actuation_mode = DEFAULT_ACTUATION_MODE;
@@ -31,6 +32,13 @@ void eeconfig_init_kb(void) {
             eeprom_he_config.per_key_bottom_deadzone[row][col]            = DEFAULT_BOTTOM_DEADZONE;
         }
     }
+    eeprom_he_config.an_deadzone_pct    = AM_DEADZONE_PCT;
+    eeprom_he_config.an_curve_exponent  = AM_CURVE_EXPONENT;
+    eeprom_he_config.an_max_speed       = AM_MAX_SPEED;
+    eeprom_he_config.an_snipe_divisor   = AM_SNIPE_DIVISOR;
+    eeprom_he_config.an_scroll_max      = AM_SCROLL_MAX;
+    eeprom_he_config.an_interval_ms     = AM_INTERVAL_MS;
+    for (uint8_t i = 0; i < 8; i++) eeprom_he_config.an_reserved[i] = 0;
     eeconfig_update_kb_datablock(&eeprom_he_config, 0, EECONFIG_KB_DATA_SIZE);
     eeconfig_init_user();
 }
@@ -65,6 +73,12 @@ void keyboard_post_init_kb(void) {
             he_config.rescaled_bottom_deadzone[row][col]                = rescale(he_config.per_key_bottom_deadzone[row][col], 0, 1023, he_config.noise_ceiling[row][col], he_config.bottoming_reading[row][col]);
         }
     }
+    he_config.an_deadzone_pct   = eeprom_he_config.an_deadzone_pct;
+    he_config.an_curve_exponent = eeprom_he_config.an_curve_exponent;
+    he_config.an_max_speed      = eeprom_he_config.an_max_speed;
+    he_config.an_snipe_divisor  = eeprom_he_config.an_snipe_divisor;
+    he_config.an_scroll_max     = eeprom_he_config.an_scroll_max;
+    he_config.an_interval_ms    = eeprom_he_config.an_interval_ms;
 
     keyboard_post_init_user();
 }
@@ -72,41 +86,11 @@ void keyboard_post_init_kb(void) {
 uint16_t analog_activity_mask = 0;
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
-    switch (keycode) {
-        case AM_MS_UP:
-            if (record->event.pressed) { analog_activity_mask |= AM_MS_UP_BIT; } else { analog_activity_mask &= ~AM_MS_UP_BIT; }
-            return false;
-        case AM_MS_DOWN:
-            if (record->event.pressed) { analog_activity_mask |= AM_MS_DOWN_BIT; } else { analog_activity_mask &= ~AM_MS_DOWN_BIT; }
-            return false;
-        case AM_MS_LEFT:
-            if (record->event.pressed) { analog_activity_mask |= AM_MS_LEFT_BIT; } else { analog_activity_mask &= ~AM_MS_LEFT_BIT; }
-            return false;
-        case AM_MS_RIGHT:
-            if (record->event.pressed) { analog_activity_mask |= AM_MS_RIGHT_BIT; } else { analog_activity_mask &= ~AM_MS_RIGHT_BIT; }
-            return false;
-        case AM_WH_UP:
-            if (record->event.pressed) { analog_activity_mask |= AM_WH_UP_BIT; } else { analog_activity_mask &= ~AM_WH_UP_BIT; }
-            return false;
-        case AM_WH_DOWN:
-            if (record->event.pressed) { analog_activity_mask |= AM_WH_DOWN_BIT; } else { analog_activity_mask &= ~AM_WH_DOWN_BIT; }
-            return false;
-        case AM_WH_LEFT:
-            if (record->event.pressed) { analog_activity_mask |= AM_WH_LEFT_BIT; } else { analog_activity_mask &= ~AM_WH_LEFT_BIT; }
-            return false;
-        case AM_WH_RIGHT:
-            if (record->event.pressed) { analog_activity_mask |= AM_WH_RIGHT_BIT; } else { analog_activity_mask &= ~AM_WH_RIGHT_BIT; }
-            return false;
-        case AM_SNIPE:
-            if (record->event.pressed) { analog_activity_mask |= AM_SNIPE_BIT; } else { analog_activity_mask &= ~AM_SNIPE_BIT; }
-            return false;
-        case AM_MULTI:
-            if (record->event.pressed) { analog_activity_mask |= AM_MULTI_BIT; } else { analog_activity_mask &= ~AM_MULTI_BIT; }
-            return false;
-    }
+    if (analog_mousekey_process_record(keycode, record)) return false;
     return process_record_user(keycode, record);
 }
 
 void housekeeping_task_kb(void) {
+    analog_mousekey_task();
     housekeeping_task_user();
 }
