@@ -1,4 +1,5 @@
 #include QMK_KEYBOARD_H
+#include "analog_common.h"
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [0] = LAYOUT_split_3x5_3(

@@ -36,6 +36,7 @@ const uint8_t rows_per_col[]                         = ROWS_PER_COL;
 #define AMUX_SEL_PINS_COUNT ARRAY_SIZE(amux_sel_pins)
 
 static uint16_t sw_value[HE_MATRIX_ROWS][MATRIX_COLS];
+uint16_t he_depth[HE_MATRIX_ROWS][MATRIX_COLS];
 static adc_mux adcMux[HE_MATRIX_ROWS];
 
 void init_row(void) {
@@ -93,6 +94,15 @@ bool he_matrix_scan(matrix_row_t current_matrix[]) {
         select_amux(col);
         for (uint8_t row = 0; row < rows_per_col[col]; row++) {
             sw_value[row][col] = he_readkey_raw(row);
+
+            uint16_t range = he_config.noise_ceiling[row][col] - he_config.bottoming_reading[row][col];
+            if (range > 0 && sw_value[row][col] < he_config.noise_ceiling[row][col]) {
+                he_depth[row][col] = ((uint32_t)(he_config.noise_ceiling[row][col] - sw_value[row][col]) * 1000) / range;
+                if (he_depth[row][col] > 1000) he_depth[row][col] = 1000;
+            } else {
+                he_depth[row][col] = 0;
+            }
+
             if (he_config.bottoming_calibration) {
                 if (he_config.bottoming_calibration_starter[row][col]) {
                     he_config.bottoming_reading[row][col] = sw_value[row][col];

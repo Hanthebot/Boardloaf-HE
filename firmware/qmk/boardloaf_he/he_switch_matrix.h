@@ -62,6 +62,10 @@ extern eeprom_he_config_t eeprom_he_config;
 extern he_config_t        he_config;
 extern bool he_live_stream_enabled;
 
+// Press depth table: 0-1000 (0 = resting, 1000 = fully pressed)
+// Computed once per matrix scan from raw ADC + calibration data.
+extern uint16_t he_depth[HE_MATRIX_ROWS][MATRIX_COLS];
+
 void init_row(void);
 void init_amux(void);
 void select_amux(uint8_t col);

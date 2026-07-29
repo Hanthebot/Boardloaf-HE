@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "he_switch_matrix.h"
+#include "analog_common.h"
 #include "action.h"
 #include "print.h"
 #include "via.h"
@@ -37,7 +38,15 @@ enum via_enums {
     id_apply_key_to_all = 13,
     id_get_all_per_key = 14,
     id_get_key_calib = 15,
-    id_bottom_deadzone = 16
+    id_bottom_deadzone = 16,
+    id_analog_mouse_enable = 17,
+    id_analog_mouse_curve = 18,
+    id_analog_mouse_deadzone = 19,
+    id_analog_mouse_max_speed = 20,
+    id_an_snipe_divisor = 21,
+    id_an_scroll_enable = 22,
+    id_an_repeat_enable = 23,
+    id_an_multistage_key = 24
     // clang-format on
 };
 
