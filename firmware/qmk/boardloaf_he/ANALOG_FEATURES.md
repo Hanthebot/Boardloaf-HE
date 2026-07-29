@@ -210,60 +210,92 @@ UF2 size unchanged from base — the new code fits within existing flash budget.
 
 ---
 
-## Multi-Stage Keys (`feature/multi-stage` — planned)
+## Multi-Stage Keys (`feature/multi-stage`)
 
 ### Design
 
-Each physical key assigned `AM_MULTI` in VIAL has two keycodes configured per-key via webapp: a *shallow* keycode (triggered at light press) and a *deep* keycode (triggered when crossing the split threshold). The threshold and a small hysteresis band prevent flickering.
-
-State machine in `housekeeping_task_kb()` or a `process_record` hook:
+Each physical key assigned `AM_MULTI` in VIAL acts as two keycodes: a *shallow* keycode (light press, above split threshold) and a *deep* keycode (deep press, below split threshold). State machine in `he_multistage.c`:
 
 ```
-IDLE ──depth>split──► DEEP (register deep keycode, unregister shallow)
-DEEP ──depth<split-hyst──► SHALLOW (register shallow keycode, unregister deep)
-SHALLOW ──depth>split──► DEEP
-Both: on key release → unregister whatever is active
+IDLE ──depth>split──► DEEP (register deep_kc via register_code16)
+DEEP ──depth<split-hyst──► SHALLOW (unregister deep_kc, register shallow_kc)
+SHALLOW ──depth>split──► DEEP (unregister shallow_kc, register deep_kc)
+On key release → unregister whichever stage is active
 ```
 
-**2G (staged layers):** Trivially achieved — user sets shallow = `MO(3)`, deep = `MO(4)` in the webapp config. No firmware change needed.
+**2G (staged layers):** Zero extra code. User sets `shallow_kc = MO(3)`, `deep_kc = MO(4)` in the webapp. `register_code16` handles layer on/off automatically.
 
 ### VIA / Webapp Split
 
-- **VIAL**: user assigns `AM_MULTI` keycode to each physical key that should behave as multi-stage
-- **Webapp**: per-position configuration (shallow keycode, deep keycode, split %, hysteresis %)
+- **VIAL**: user assigns `AM_MULTI` keycode to each physical key
+- **Webapp** (VIA ID 24): per-position config — `shallow_kc` (uint16), `deep_kc` (uint16), `split_pct` (uint8, 0–100), `hysteresis` (uint8, 0–50). SET immediately persists to EEPROM.
 
-### EEPROM Storage
+### EEPROM Layout
 
-Per-position struct (up to 18 keys per half):
 ```c
-typedef struct {
-    uint16_t shallow_keycode;  // QMK keycode for light press
-    uint16_t deep_keycode;     // QMK keycode for deep press
-    uint8_t  split_pct;        // 0–100, threshold boundary
-    uint8_t  hysteresis;       // 0–50, hysteresis gap in percent
-} multi_stage_key_t;
+struct PACKED {
+    uint16_t shallow_kc;
+    uint16_t deep_kc;
+    uint8_t  split_pct;
+    uint8_t  hysteresis;
+} ms_config[18];   // 18 × 6 = 108 bytes, offset 217–324
 ```
 
-Requires additional VIA ID for configuration.
+Total EEPROM: 325 bytes (was 217).
+
+### File Inventory
+
+| File | Lines | Role |
+|------|-------|------|
+| `he_multistage.h` | 26 | API, per-key config struct |
+| `he_multistage.c` | 72 | State machine, process_record hook, housekeeping task |
+| `boardloaf_he.c` | +7 | Hook calls + EEPROM init/load |
+| `he_switch_matrix.h` | +7 | EEPROM struct extension |
+| `via_he.c` (×2) | +16 | VIA ID 24 set/get |
+
+### Build Verification
+
+```bash
+make boardloaf_he:vial   # 325 bytes EEPROM, clean
+```
 
 ---
 
-## Dynamic Key Repeat (`feature/analog-repeat` — planned)
+## Dynamic Key Repeat (`feature/analog-repeat`)
 
 ### Design
 
-For held keys (backspace, arrows, etc.), inject additional key taps at a rate proportional to press depth. Light hold = slow repeat (one char per ~200 ms), deep hold = fast repeat (one char per ~20 ms).
+Tracks ALL non-analog key presses in a circular tracking array (`ar_track[16]`). In `housekeeping_task_kb()`, for each still-held key where `he_depth[row][col]` is available (local half):
 
-In `housekeeping_task_kb()`:
 ```
-for each held key in "analog repeat" list:
-    depth = he_depth[row][col]
-    interval = map(depth, 0 → max_interval, 1000 → min_interval)
-    if timer has passed interval since last repeat:
-        tap_code(keycode)
+interval = map(depth, 0 → 200ms, 1000 → 15ms)  // linear
+if timer_elapsed(last_repeat) >= interval:
+    tap_code16(keycode)           // sends press+release (5ms TAP_CODE_DELAY)
+    if key still physically held: // matrix_get_row check
+        register_code16(keycode)  // re-hold
 ```
 
-No per-key configuration needed for V1 — enabled globally via `id_an_repeat_enable` (VIA ID 23, reserved in base branch). Future: per-key enable/disable list.
+The `tap_code16` + re-register pattern produces a clean press+release+repress for the host, triggering an additional auto-repeat character. The 5ms gap is imperceptible. If the user releases the physical key during the gap, the `matrix_get_row` check prevents a stuck key.
+
+### VIA Config
+
+VIA ID 23 (`id_an_repeat_enable`): toggle `ar_enabled` at runtime. Default on (enabled). No EEPROM persistence (resets to enabled on boot).
+
+### File Inventory
+
+| File | Lines | Role |
+|------|-------|------|
+| `he_analog_repeat.h` | 20 | API, tracking struct |
+| `he_analog_repeat.c` | 68 | Key tracking, depth→interval mapping, repeat tap |
+| `boardloaf_he.c` | +2 | Track + task hooks |
+| `rules.mk` | +1 | SRC entry |
+| `via_he.c` (×2) | +8 | VIA ID 23 toggle |
+
+### Build Verification
+
+```bash
+make boardloaf_he:vial   # No EEPROM change, clean
+```
 
 ---
 
@@ -292,16 +324,16 @@ Use this to confirm implementation quality across all branches:
 - [ ] EEPROM init + load handles new fields without data corruption
 - [ ] No regressions in APC/Rapid Trigger key press detection
 
-### Multi-Stage Branch (planned)
-- [ ] `AM_MULTI` keycode tracked with row/col position
-- [ ] Per-position config stored and loaded correctly
-- [ ] State machine transitions with hysteresis
-- [ ] Shallow/deep keycodes register/unregister correctly
-- [ ] Layer MO( ) keys work as deep keycodes
-- [ ] Webapp can read/write per-position config
+### Multi-Stage Branch
+- [x] `AM_MULTI` keycode tracked with row/col position
+- [x] Per-position config stored in EEPROM and loaded at boot
+- [x] State machine transitions with hysteresis (5% default gap)
+- [x] Shallow/deep keycodes register/unregister via register_code16
+- [x] Layer MO( ) keycodes work as deep_kc (staged layers / 2G)
+- [x] VIA ID 24: set/get per-position config, persisted to EEPROM
 
-### Analog Repeat Branch (planned)
-- [ ] Held keys trigger additional taps at depth-dependent rate
-- [ ] Rate respects min/max interval bounds
-- [ ] Does not interfere with normal key repeat
-- [ ] VIA enable/disable flag works
+### Analog Repeat Branch
+- [x] All non-analog key presses tracked in `ar_track[16]`
+- [x] Depth→interval linear mapping (15–200 ms)
+- [x] `tap_code16` + re-register with physical hold check prevents stuck keys
+- [x] VIA ID 23: toggle on/off at runtime
