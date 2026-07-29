@@ -63,7 +63,7 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
 ## Improvements to be done
 - [ ] Support analog mousekey
 - [ ] Switch to full duplex / TRRS communication
-- [ ] Make SOT-23 pad larger, thus easier to solder
+- [x] Make SOT-23 pad larger, thus easier to solder
 - [ ] ~~Switch to blackpill mcu for better ADC (not in this repo)~~
 
 ## Remarks
