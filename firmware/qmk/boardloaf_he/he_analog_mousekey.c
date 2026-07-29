@@ -9,7 +9,7 @@
 uint8_t analog_key_row[10] = {0};
 uint8_t analog_key_col[10] = {0};
 
-#define am_deadzone()     (he_config.an_deadzone_pct ? he_config.an_deadzone_pct : 50)
+#define am_deadzone()     (he_config.an_deadzone_pct ? he_config.an_deadzone_pct : 10)
 #define am_curve()        (he_config.an_curve_exponent ? he_config.an_curve_exponent : 2)
 #define am_max_speed()    (he_config.an_max_speed ? he_config.an_max_speed : 10)
 #define am_snipe_div()    (he_config.an_snipe_divisor ? he_config.an_snipe_divisor : 10)

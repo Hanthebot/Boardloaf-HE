@@ -54,7 +54,7 @@ depth = ((noise_ceiling - sw_value) * 1000) / range  // 0 (resting) … 1000 (bo
 | `AM_SNIPE`  | bit 8      | 8     | Sniper modifier       |
 | `AM_MULTI`  | bit 9      | 9     | Multi-stage trigger   |
 
-Keycodes are defined at `0x5F00 + N` (QMK SAFE_RANGE). Included via `analog_common.h` in both the dev and vial keymaps — VIAL's preprocessor discovers them and they appear in the keycode picker.
+Keycodes are defined via `SAFE_RANGE` (QMK user keycode base). Included via `analog_common.h` in both the dev and vial keymaps — VIAL's preprocessor discovers them and they appear in the keycode picker.
 
 ### Activity Tracking
 
@@ -85,14 +85,18 @@ void housekeeping_task_kb(void);
 
 **File:** `via_he.c` (both dev and vial)
 
-| ID  | Name                | Used By         |
-|-----|---------------------|-----------------|
-| 17  | `id_am_curve`       | analog-mousekey |
-| 18  | `id_am_deadzone`    | analog-mousekey |
-| 19  | `id_am_max_speed`   | analog-mousekey |
-| 20  | `id_an_snipe_divisor`| analog-mousekey |
-| 21  | `id_am_scroll_max`  | analog-mousekey |
-| 22  | `id_am_interval_ms` | analog-mousekey |
+| ID  | Name (base enum)       | Handlers added by  |
+|-----|------------------------|--------------------|
+| 17  | `id_analog_mouse_enable`| — (reserved)       |
+| 18  | `id_analog_mouse_curve` | analog-mousekey    |
+| 19  | `id_analog_mouse_deadzone`| analog-mousekey  |
+| 20  | `id_analog_mouse_max_speed`| analog-mousekey |
+| 21  | `id_an_snipe_divisor`   | analog-mousekey    |
+| 22  | `id_an_scroll_enable`   | — (reserved)       |
+| 23  | `id_an_repeat_enable`   | analog-repeat      |
+| 24  | `id_an_multistage_key`  | multi-stage        |
+| 25  | `id_am_scroll_max`      | analog-mousekey    |
+| 26  | `id_am_interval_ms`     | analog-mousekey    |
 
 ---
 
@@ -164,7 +168,7 @@ New fields in `eeprom_he_config_t`:
 
 | Field              | Bytes | Default | Range |
 |--------------------|-------|---------|-------|
-| `an_deadzone_pct`  | 1     | 50      | 0–100 |
+| `an_deadzone_pct`  | 1     | 10      | 0–100 |
 | `an_curve_exponent`| 1     | 2       | 1–5   |
 | `an_max_speed`     | 1     | 10      | 1–127 |
 | `an_snipe_divisor` | 1     | 10      | 1–100 |
@@ -178,7 +182,7 @@ Runtime counterparts in `he_config_t` are loaded from EEPROM in `keyboard_post_i
 
 ### VIA Configuration
 
-All six parameters are accessible via VIA raw HID (custom IDs 17–22). Each is a single byte — get/set with immediate effect on runtime config, saved to EEPROM on set. A companion webapp update would add slider controls (see webapp/ section in README for existing calibration webapp pattern).
+Six parameters are accessible via VIA raw HID: curve, deadzone, max speed, snipe divisor (IDs 18–21), scroll max (ID 25), and interval (ID 26). Each is a single byte — get/set with immediate effect on runtime config, saved to EEPROM on set. A companion webapp update would add slider controls (see webapp/ section in README for existing calibration webapp pattern).
 
 ### Split Keyboard Limitation
 
@@ -192,9 +196,9 @@ Workaround: assign analog cursor/scroll keys to the half connected via USB (typi
 
 | File                     | Lines | Role |
 |--------------------------|-------|------|
-| `he_analog_mousekey.c`   | 160   | Tracking, curve math, task loop |
-| `he_analog_mousekey.h`   | 30    | API, index constants |
-| `boardloaf_he.c`         | +4    | Delegate to module |
+| `he_analog_mousekey.c`   | 115   | Tracking, curve math, task loop |
+| `he_analog_mousekey.h`   | 22    | API, index constants |
+| `boardloaf_he.c`         | +4    | Delegate to module (net -16 vs base, refactored) |
 | `he_switch_matrix.h`     | +17   | EEPROM + runtime fields |
 | `config.h`               | +7    | Defaults + new EEPROM size |
 | `rules.mk`               | +1    | SRC entry |
@@ -217,10 +221,10 @@ UF2 size unchanged from base — the new code fits within existing flash budget.
 Each physical key assigned `AM_MULTI` in VIAL acts as two keycodes: a *shallow* keycode (light press, above split threshold) and a *deep* keycode (deep press, below split threshold). State machine in `he_multistage.c`:
 
 ```
-IDLE ──depth>split──► DEEP (register deep_kc via register_code16)
-DEEP ──depth<split-hyst──► SHALLOW (unregister deep_kc, register shallow_kc)
+IDLE ──AM_MULTI pressed──► SHALLOW (register shallow_kc)
 SHALLOW ──depth>split──► DEEP (unregister shallow_kc, register deep_kc)
-On key release → unregister whichever stage is active
+DEEP ──depth<split-hyst──► SHALLOW (unregister deep_kc, register shallow_kc)
+On key release → unregister whichever stage is active, return to IDLE
 ```
 
 **2G (staged layers):** Zero extra code. User sets `shallow_kc = MO(3)`, `deep_kc = MO(4)` in the webapp. `register_code16` handles layer on/off automatically.

@@ -36,7 +36,7 @@
 
 #define EECONFIG_KB_DATA_SIZE 231
 
-#define AM_DEADZONE_PCT      50
+#define AM_DEADZONE_PCT      10
 #define AM_CURVE_EXPONENT    2
 #define AM_MAX_SPEED         10
 #define AM_SNIPE_DIVISOR     10
