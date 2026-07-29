@@ -82,7 +82,9 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
 ![PCB](images/pcb-preview.png)
 
 ## Licenses
-MIT license for all the code
+Code license under clarification. Consider it GPL V3 until then.
+Webapp is MIT license.
+~~MIT license for all the code~~
 CC BY-SA 4.0 license for all hardware / design: inherited from Boardloaf
 
 ## Disclaimer
