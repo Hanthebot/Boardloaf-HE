@@ -17,6 +17,7 @@
 #include "quantum.h"
 #include "he_switch_matrix.h"
 #include "analog_common.h"
+#include "he_multistage.h"
 
 void eeconfig_init_kb(void) {
     eeprom_he_config.actuation_mode = DEFAULT_ACTUATION_MODE;
@@ -30,6 +31,12 @@ void eeconfig_init_kb(void) {
             eeprom_he_config.per_key_mode_1_release_offset[row][col]      = DEFAULT_MODE_1_RELEASE_OFFSET;
             eeprom_he_config.per_key_bottom_deadzone[row][col]            = DEFAULT_BOTTOM_DEADZONE;
         }
+    }
+    for (uint8_t i = 0; i < HE_MATRIX_ROWS * MATRIX_COLS; i++) {
+        eeprom_he_config.ms_config[i].shallow_kc = 0;
+        eeprom_he_config.ms_config[i].deep_kc    = 0;
+        eeprom_he_config.ms_config[i].split_pct  = 50;
+        eeprom_he_config.ms_config[i].hysteresis = 5;
     }
     eeconfig_update_kb_datablock(&eeprom_he_config, 0, EECONFIG_KB_DATA_SIZE);
     eeconfig_init_user();
@@ -65,6 +72,13 @@ void keyboard_post_init_kb(void) {
             he_config.rescaled_bottom_deadzone[row][col]                = rescale(he_config.per_key_bottom_deadzone[row][col], 0, 1023, he_config.noise_ceiling[row][col], he_config.bottoming_reading[row][col]);
         }
     }
+    for (uint8_t i = 0; i < HE_MATRIX_ROWS * MATRIX_COLS; i++) {
+        ms_config[i].shallow_kc = eeprom_he_config.ms_config[i].shallow_kc;
+        ms_config[i].deep_kc    = eeprom_he_config.ms_config[i].deep_kc;
+        ms_config[i].split_pct  = eeprom_he_config.ms_config[i].split_pct;
+        ms_config[i].hysteresis = eeprom_he_config.ms_config[i].hysteresis;
+    }
+    multistage_init();
 
     keyboard_post_init_user();
 }
@@ -72,6 +86,7 @@ void keyboard_post_init_kb(void) {
 uint16_t analog_activity_mask = 0;
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
+    if (multistage_process_record(keycode, record)) return false;
     switch (keycode) {
         case AM_MS_UP:
             if (record->event.pressed) { analog_activity_mask |= AM_MS_UP_BIT; } else { analog_activity_mask &= ~AM_MS_UP_BIT; }
@@ -100,13 +115,11 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
         case AM_SNIPE:
             if (record->event.pressed) { analog_activity_mask |= AM_SNIPE_BIT; } else { analog_activity_mask &= ~AM_SNIPE_BIT; }
             return false;
-        case AM_MULTI:
-            if (record->event.pressed) { analog_activity_mask |= AM_MULTI_BIT; } else { analog_activity_mask &= ~AM_MULTI_BIT; }
-            return false;
     }
     return process_record_user(keycode, record);
 }
 
 void housekeeping_task_kb(void) {
+    multistage_task();
     housekeeping_task_user();
 }

@@ -35,6 +35,12 @@ typedef struct PACKED {
     uint8_t  per_key_mode_1_actuation_offset[HE_MATRIX_ROWS][MATRIX_COLS];      // per-key RT actuation offset (1..255, raw units)
     uint8_t  per_key_mode_1_release_offset[HE_MATRIX_ROWS][MATRIX_COLS];        // per-key RT release offset (1..255, raw units)
     uint16_t per_key_bottom_deadzone[HE_MATRIX_ROWS][MATRIX_COLS];              // per-key bottom deadzone (raw 0..1023 scale, 0=disabled)
+    struct PACKED {
+        uint16_t shallow_kc;
+        uint16_t deep_kc;
+        uint8_t  split_pct;
+        uint8_t  hysteresis;
+    } ms_config[HE_MATRIX_ROWS * MATRIX_COLS];
 } eeprom_he_config_t;
 
 typedef struct {

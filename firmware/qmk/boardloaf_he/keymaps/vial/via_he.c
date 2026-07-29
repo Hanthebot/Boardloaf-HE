@@ -15,6 +15,7 @@
  */
 #include "he_switch_matrix.h"
 #include "analog_common.h"
+#include "he_multistage.h"
 #include "action.h"
 #include "print.h"
 #include "via.h"
@@ -270,6 +271,22 @@ void via_config_set_value(uint8_t *data) {
             he_apply_key_to_all(row, col);
             break;
         }
+        case id_an_multistage_key: {
+            uint8_t row = value_data[0];
+            uint8_t col = value_data[1];
+            uint8_t idx = row * MATRIX_COLS + col;
+            ms_config[idx].shallow_kc = value_data[2] | (value_data[3] << 8);
+            ms_config[idx].deep_kc    = value_data[4] | (value_data[5] << 8);
+            ms_config[idx].split_pct  = value_data[6];
+            ms_config[idx].hysteresis = value_data[7];
+            eeprom_he_config.ms_config[idx].shallow_kc = ms_config[idx].shallow_kc;
+            eeprom_he_config.ms_config[idx].deep_kc    = ms_config[idx].deep_kc;
+            eeprom_he_config.ms_config[idx].split_pct  = ms_config[idx].split_pct;
+            eeprom_he_config.ms_config[idx].hysteresis = ms_config[idx].hysteresis;
+            eeconfig_update_kb_datablock(&eeprom_he_config, 0, EECONFIG_KB_DATA_SIZE);
+            uprintf("ms [%d,%d] sh=0x%04X dp=0x%04X sp=%d hy=%d\n", row, col, ms_config[idx].shallow_kc, ms_config[idx].deep_kc, ms_config[idx].split_pct, ms_config[idx].hysteresis);
+            break;
+        }
         default: {
             break;
         }
@@ -277,6 +294,7 @@ void via_config_set_value(uint8_t *data) {
 }
 
 // Get custom value. value_data layout for per-key get: [row, col, payload...]
+
 void via_config_get_value(uint8_t *data) {
     uint8_t *value_id   = &(data[0]);
     uint8_t *value_data = &(data[1]);
@@ -377,6 +395,18 @@ void via_config_get_value(uint8_t *data) {
             value_data[3] = noise >> 8;
             value_data[4] = bottom & 0xFF;
             value_data[5] = bottom >> 8;
+            break;
+        }
+        case id_an_multistage_key: {
+            uint8_t row = value_data[0];
+            uint8_t col = value_data[1];
+            uint8_t idx = row * MATRIX_COLS + col;
+            value_data[2] = ms_config[idx].shallow_kc & 0xFF;
+            value_data[3] = ms_config[idx].shallow_kc >> 8;
+            value_data[4] = ms_config[idx].deep_kc & 0xFF;
+            value_data[5] = ms_config[idx].deep_kc >> 8;
+            value_data[6] = ms_config[idx].split_pct;
+            value_data[7] = ms_config[idx].hysteresis;
             break;
         }
         default: {
