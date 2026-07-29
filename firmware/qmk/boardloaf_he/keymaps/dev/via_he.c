@@ -15,6 +15,7 @@
  */
 #include "he_switch_matrix.h"
 #include "analog_common.h"
+#include "he_analog_repeat.h"
 #include "action.h"
 #include "print.h"
 #include "via.h"
@@ -270,6 +271,11 @@ void via_config_set_value(uint8_t *data) {
             he_apply_key_to_all(row, col);
             break;
         }
+        case id_an_repeat_enable: {
+            ar_enabled = value_data[0];
+            uprintf("analog_repeat=%d\n", ar_enabled);
+            break;
+        }
         default: {
             break;
         }
@@ -277,6 +283,7 @@ void via_config_set_value(uint8_t *data) {
 }
 
 // Get custom value. value_data layout for per-key get: [row, col, payload...]
+
 void via_config_get_value(uint8_t *data) {
     uint8_t *value_id   = &(data[0]);
     uint8_t *value_data = &(data[1]);
@@ -377,6 +384,10 @@ void via_config_get_value(uint8_t *data) {
             value_data[3] = noise >> 8;
             value_data[4] = bottom & 0xFF;
             value_data[5] = bottom >> 8;
+            break;
+        }
+        case id_an_repeat_enable: {
+            value_data[0] = ar_enabled;
             break;
         }
         default: {

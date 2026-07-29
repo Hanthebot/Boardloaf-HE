@@ -17,6 +17,7 @@
 #include "quantum.h"
 #include "he_switch_matrix.h"
 #include "analog_common.h"
+#include "he_analog_repeat.h"
 
 void eeconfig_init_kb(void) {
     eeprom_he_config.actuation_mode = DEFAULT_ACTUATION_MODE;
@@ -72,6 +73,7 @@ void keyboard_post_init_kb(void) {
 uint16_t analog_activity_mask = 0;
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
+    ar_track_key(keycode, record);
     switch (keycode) {
         case AM_MS_UP:
             if (record->event.pressed) { analog_activity_mask |= AM_MS_UP_BIT; } else { analog_activity_mask &= ~AM_MS_UP_BIT; }
@@ -108,5 +110,6 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
 }
 
 void housekeeping_task_kb(void) {
+    ar_task();
     housekeeping_task_user();
 }
