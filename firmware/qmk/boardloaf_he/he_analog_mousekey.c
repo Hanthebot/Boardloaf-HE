@@ -31,7 +31,9 @@ bool analog_mousekey_process_record(uint16_t keycode, keyrecord_t *record) {
     return false;
 }
 
-static uint32_t compute_speed_fraction(uint16_t depth, uint8_t exponent, uint16_t deadzone) {
+static uint32_t compute_speed_fraction(uint16_t depth, uint8_t exponent, uint16_t deadzone_pct) {
+    uint16_t deadzone = deadzone_pct * 10;
+    if (deadzone > 999) deadzone = 999;
     if (depth <= deadzone) return 0;
     uint16_t effective = depth - deadzone;
     uint16_t max_range = 1000 - deadzone;
