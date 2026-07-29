@@ -54,11 +54,14 @@ void multistage_task(void) {
     uint16_t shallow_kc = ms_config[idx].shallow_kc;
     uint16_t deep_kc    = ms_config[idx].deep_kc;
 
-    if (depth > split && stage != 2) {
+    uint16_t split_scaled = (uint16_t)split * 10;
+    uint16_t hyst_scaled  = (uint16_t)hyst * 10;
+
+    if (depth > split_scaled && stage != 2) {
         if (stage == 1) unregister_code16(shallow_kc);
         register_code16(deep_kc);
         ms_stage[idx] = 2;
-    } else if (depth < (split - hyst) && stage != 1) {
+    } else if (depth < (split_scaled - hyst_scaled) && stage != 1) {
         if (stage == 2) unregister_code16(deep_kc);
         register_code16(shallow_kc);
         ms_stage[idx] = 1;
