@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Boardloaf-HE Per-Key Calibration</title>
+<title>HE Per-Key Calibration</title>
 <style>
 body { font-family: system-ui, sans-serif; background:#111; color:#ddd; margin:0; padding:20px; display:flex; flex-direction:column; align-items:center; }
 h1 { color:#4ade80; margin:5px 0; }
@@ -14,19 +14,17 @@ button:disabled { background:#555; cursor:not-allowed; }
 button.danger { background:#dc2626; }
 button.warn { background:#f59e0b; }
 button.sel { background:#16a34a; }
+select { background:#1a1a1a; color:#ddd; border:1px solid #444; border-radius:5px; padding:8px 10px; font-size:13px; margin:3px; cursor:pointer; }
+select:focus { outline:none; border-color:#3b82f6; }
 .controls { display:flex; flex-wrap:wrap; justify-content:center; max-width:900px; margin-bottom:10px; }
-.kbd { display:grid; grid-template-columns:repeat(5,1fr); grid-auto-rows:auto; gap:6px; background:#1a1a1a; padding:15px; border-radius:8px; width:min(380px,90vw); box-sizing:border-box; }
-.key { background:#2a2a2a; border-radius:5px; padding:4px; display:flex; flex-direction:column; align-items:center; border:2px solid transparent; cursor:pointer; transition:border-color .15s; width:64px; min-width:64px; box-sizing:border-box; }
+.kbd { position:relative; background:#1a1a1a; padding:8px; border-radius:8px; box-sizing:border-box; }
+.key { position:absolute; background:#2a2a2a; border-radius:5px; padding:4px; display:flex; flex-direction:column; align-items:center; border:2px solid transparent; cursor:pointer; transition:border-color .15s; box-sizing:border-box; }
 .key.pressed { border-color:#4ade80; background:#059669; }
 .key.selected { border-color:#f59e0b; box-shadow:0 0 6px #f59e0b; }
 .key .lbl { font-size:9px; color:#aaa; }
 .key .val { font-size:11px; font-weight:bold; margin:2px 0; color:#fff; }
 .key .bar { width:100%; height:34px; background:#444; border-radius:2px; overflow:hidden; display:flex; flex-direction:column; justify-content:flex-end; }
 .key .fill { width:100%; background:#60a5fa; }
-.thumb-row { grid-column:1/-1; display:flex; gap:6px; margin-top:4px; }
-.thumb-row .key { width:64px; min-width:64px; }
-.thumb-row.left  { justify-content:flex-end; }
-.thumb-row.right { justify-content:flex-start; }
 .halves { display:flex; gap:30px; flex-wrap:wrap; justify-content:center; }
 .half-label { text-align:center; color:#aaa; font-weight:bold; margin-bottom:6px; }
 #log { width:100%; max-width:900px; height:100px; background:#000; color:#0f0; font-family:monospace; padding:8px; margin-top:12px; overflow-y:auto; font-size:11px; box-sizing:border-box; border-radius:4px; }
@@ -40,7 +38,7 @@ button.sel { background:#16a34a; }
 </style>
 </head>
 <body>
-<h1>Boardloaf HE Per-Key Calibration</h1>
+<h1>HE Per-Key Calibration</h1>
 <div class="hint">WebHID. Chrome/Edge. VID 0xF00D, PID 0x0001. Plug in each half separately to calibrate.<br>
 All sliders are <b>percentage of key travel</b> (0% = bottomed, 100% = at rest). Click a key, drag sliders, then Apply to All or Save.</div>
 <div id="status">Not connected</div>
@@ -57,6 +55,10 @@ All sliders are <b>percentage of key travel</b> (0% = bottomed, 100% = at rest).
     <button id="btn-clear" disabled class="danger">Clear Calib</button>
     <button id="btn-mode" disabled>Toggle Mode</button>
     <button id="btn-save" disabled class="sel">Save to EEPROM</button>
+    <select id="layout-select" title="Keyboard layout"></select>
+    <button id="btn-export-layout">Export Layout</button>
+    <button id="btn-import-layout">Import Layout</button>
+    <input type="file" id="layout-file" accept="application/json,.json" style="display:none">
 </div>
 <div class="halves">
     <div>
@@ -66,7 +68,80 @@ All sliders are <b>percentage of key travel</b> (0% = bottomed, 100% = at rest).
 </div>
 <div id="log">Ready.</div>
 
+<script src="layouts.js"></script>
 <script>
+// === Layouts ===
+// Layout data comes from layouts.js (this repo's built-in boards) plus any
+// layouts the user imported (persisted in localStorage). index.html itself is
+// identical across repos; layouts.js is the only per-repo file.
+const LS_LAYOUTS_KEY = 'he_layouts_v1';
+const LS_SELECTED_KEY = 'he_layout_selected';
+
+let LAYOUTS = {};
+let DEFAULT_LAYOUT = null;
+
+function loadLayouts(){
+    LAYOUTS = {};
+    if(window.HE_LAYOUTS){
+        for(const id in window.HE_LAYOUTS) LAYOUTS[id] = window.HE_LAYOUTS[id];
+    }
+    try {
+        const saved = JSON.parse(localStorage.getItem(LS_LAYOUTS_KEY) || '{}');
+        for(const id in saved) LAYOUTS[id] = saved[id];
+    } catch(e){ /* ignore corrupt storage */ }
+    if(window.HE_DEFAULT_LAYOUT && LAYOUTS[window.HE_DEFAULT_LAYOUT]) DEFAULT_LAYOUT = window.HE_DEFAULT_LAYOUT;
+    else DEFAULT_LAYOUT = Object.keys(LAYOUTS)[0];
+    const last = localStorage.getItem(LS_SELECTED_KEY);
+    if(last && LAYOUTS[last]) DEFAULT_LAYOUT = last;
+}
+
+function saveImportedLayouts(){
+    const imports = {};
+    for(const id in LAYOUTS) if(LAYOUTS[id]._imported) imports[id] = LAYOUTS[id];
+    try { localStorage.setItem(LS_LAYOUTS_KEY, JSON.stringify(imports)); } catch(e){}
+}
+
+function validateLayout(o){
+    if(!o || typeof o !== 'object') return 'not an object';
+    if(typeof o.id !== 'string' || !o.id) return 'missing string "id"';
+    if(typeof o.name !== 'string' || !o.name) return 'missing string "name"';
+    if(!Number.isInteger(o.rows) || o.rows <= 0) return 'invalid integer "rows"';
+    if(!Number.isInteger(o.cols) || o.cols <= 0) return 'invalid integer "cols"';
+    if(!Array.isArray(o.keymap)) return 'missing "keymap" array';
+    if(o.keymap.length !== o.rows * o.cols) return `keymap length ${o.keymap.length} != rows*cols (${o.rows * o.cols})`;
+    for(const k of o.keymap){
+        if(k === null || k === undefined) continue;
+        if(typeof k !== 'object') return 'keymap entries must be objects';
+        if(k.hidden) continue;
+        if(typeof k.x !== 'number' || typeof k.y !== 'number') return 'key needs numeric x,y';
+        if(k.w !== undefined && typeof k.w !== 'number') return 'key "w" must be numeric';
+        if(k.h !== undefined && typeof k.h !== 'number') return 'key "h" must be numeric';
+        if(k.label !== undefined && typeof k.label !== 'string') return 'key "label" must be a string';
+    }
+    return null;
+}
+
+function importLayoutText(text){
+    let obj;
+    try { obj = JSON.parse(text); } catch(e){ return { error: 'Invalid JSON: ' + e.message }; }
+    const err = validateLayout(obj);
+    if(err) return { error: err };
+    obj._imported = true;
+    LAYOUTS[obj.id] = obj;
+    saveImportedLayouts();
+    refreshLayoutSelect();
+    return { ok: obj };
+}
+
+function exportLayoutData(o){
+    const copy = { id: o.id, name: o.name, rows: o.rows, cols: o.cols, keymap: o.keymap };
+    return JSON.stringify(copy, null, 2);
+}
+
+loadLayouts();
+let layout = LAYOUTS[DEFAULT_LAYOUT] || LAYOUTS[Object.keys(LAYOUTS)[0]];
+let keys = []; // flat array of DOM keys, index = row*cols+col (null for hidden)
+
 const VID = 0xF00D, PID = 0x0001;
 const UA_CONSOLE = 0xFF31, UA_RAW = 0xFF60;
 const RAW_EPSIZE = 32;
@@ -84,14 +159,66 @@ function log(msg){ const t = new Date().toISOString().slice(11,23); LOG.innerHTM
 function vlog(msg){ if(verboseLog) log(msg); }
 function setStatus(s){ STATUS.textContent = s; }
 
+// === Layout select ===
+const layoutSel = document.getElementById('layout-select');
+function refreshLayoutSelect(){
+    const current = layoutSel.value;
+    layoutSel.innerHTML = '';
+    for(const id in LAYOUTS){
+        const o = document.createElement('option');
+        o.value = id; o.textContent = LAYOUTS[id].name;
+        layoutSel.appendChild(o);
+    }
+    if(LAYOUTS[current]) layoutSel.value = current;
+    else layoutSel.value = layout.id;
+}
+refreshLayoutSelect();
+layoutSel.onchange = () => {
+    layout = LAYOUTS[layoutSel.value];
+    try { localStorage.setItem(LS_SELECTED_KEY, layout.id); } catch(e){}
+    selectedRC = null; selectedCalib = null;
+    buildKeyboard();
+    log(`Layout: ${layout.name}`);
+};
+
+// === Import / export layout ===
+document.getElementById('btn-export-layout').onclick = () => {
+    const data = exportLayoutData(layout);
+    const blob = new Blob([data], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${layout.id}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    log(`Layout exported: ${layout.name}`);
+};
+document.getElementById('btn-import-layout').onclick = () => {
+    document.getElementById('layout-file').click();
+};
+document.getElementById('layout-file').onchange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        const res = importLayoutText(String(reader.result));
+        if(res.error){ log(`Import failed: ${res.error}`); return; }
+        layout = res.ok;
+        try { localStorage.setItem(LS_SELECTED_KEY, layout.id); } catch(e2){}
+        layoutSel.value = layout.id;
+        selectedRC = null; selectedCalib = null;
+        buildKeyboard();
+        log(`Imported layout: ${layout.name}`);
+    };
+    reader.readAsText(file);
+};
+
 // === Half toggle ===
 document.getElementById('btn-half').onclick = () => {
     currentHalf = currentHalf === 'left' ? 'right' : 'left';
     document.getElementById('btn-half').textContent = `Half: ${currentHalf === 'left' ? 'Left' : 'Right'}`;
     document.getElementById('label-master').textContent = currentHalf === 'left' ? 'Left Half' : 'Right Half';
-    // Flip thumb alignment: left half thumbs align right (inward), right half thumbs align left
-    const tr = document.querySelector('.thumb-row');
-    if(tr) tr.className = 'thumb-row ' + currentHalf;
+    buildKeyboard();
 };
 
 // === Percentage <-> raw conversion (whole percent) ===
@@ -112,8 +239,10 @@ function rtMaxPct(){
     return Math.min(100, Math.round(255 * 100 / selectedCalib.travel));
 }
 
-// === Grid construction (master half) ===
-const masterKeys = [];
+// === Grid construction from layout ===
+const gridMaster = document.getElementById('grid-master');
+const KEY_UNIT = 56;
+
 function makeKey(label, row, col){
     const k = document.createElement('div');
     k.className = 'key';
@@ -127,20 +256,45 @@ function makeKey(label, row, col){
     k.onclick = () => selectKey(row, col);
     return k;
 }
-const gridMaster = document.getElementById('grid-master');
-for(let r=0;r<3;r++) for(let c=0;c<5;c++){
-    const k = makeKey(`r${r}c${c}`, r, c);
-    k.style.gridRow = r+1; k.style.gridColumn = c+1;
-    gridMaster.appendChild(k); masterKeys[r*5+c]=k;
+
+function buildKeyboard(){
+    gridMaster.innerHTML = '';
+    keys = [];
+    // Compute layout width (before mirroring) in key units
+    let maxRight = 0;
+    for(const kc of layout.keymap){
+        if(!kc || kc.hidden) continue;
+        maxRight = Math.max(maxRight, kc.x + (kc.w || 1));
+    }
+    const isRight = currentHalf === 'right';
+    for(let r = 0; r < layout.rows; r++){
+        for(let c = 0; c < layout.cols; c++){
+            const idx = r * layout.cols + c;
+            const kc = layout.keymap[idx];
+            if(!kc || kc.hidden){ keys[idx] = null; continue; }
+            let x = kc.x, w = kc.w || 1;
+            if(isRight) x = maxRight - x - w; // mirror for reversible board
+            const k = makeKey(kc.label || `r${r}c${c}`, r, c);
+            k.style.left = (x * KEY_UNIT + 6) + 'px';
+            k.style.top  = (kc.y * KEY_UNIT + 6) + 'px';
+            k.style.width  = (w * KEY_UNIT - 8) + 'px';
+            k.style.height = ((kc.h || 1) * KEY_UNIT - 8) + 'px';
+            if(kc.thumb) k.classList.add('thumb');
+            gridMaster.appendChild(k);
+            keys[idx] = k;
+        }
+    }
+    gridMaster.style.width = (maxRight * KEY_UNIT + 12) + 'px';
+    gridMaster.style.height = (maxKeyY() * KEY_UNIT + 12) + 'px';
 }
-const thumbRow = document.createElement('div');
-thumbRow.className = 'thumb-row left';
-thumbRow.style.gridRow = 4; thumbRow.style.gridColumn = '1 / -1';
-for(let t=0;t<3;t++){
-    const k = makeKey(`T${t}`, t, 5);
-    thumbRow.appendChild(k); masterKeys[15+t]=k;
+function maxKeyY(){
+    let my = 0;
+    for(const kc of layout.keymap){
+        if(!kc || kc.hidden) continue;
+        my = Math.max(my, kc.y + (kc.h || 1));
+    }
+    return my;
 }
-gridMaster.appendChild(thumbRow);
 
 // === Connect ===
 document.getElementById('btn-connect').onclick = async () => {
@@ -292,44 +446,29 @@ function parseLine(line){
     const nums = line.split(',').filter(x=>x!=='').map(Number);
     if(parseMode==='stream'){
         streamRows.push(nums); rowIdx++;
-        if(rowIdx>=3){ applyStream(streamRows); parseMode=null; }
+        if(rowIdx>=layout.rows){ applyStream(streamRows); parseMode=null; }
     } else if(parseMode==='state'){
         stateRows.push(nums); rowIdx++;
-        if(rowIdx>=3){ applyState(stateRows); parseMode=null; }
+        if(rowIdx>=layout.rows){ applyState(stateRows); parseMode=null; }
     }
 }
 
 function applyStream(rows){
     const ADC_MAX = 1023;
-    const isRight = currentHalf === 'right';
-    for(let r=0;r<3;r++) for(let c=0;c<5;c++){
+    for(let r=0;r<layout.rows;r++) for(let c=0;c<layout.cols;c++){
         const v = rows[r]?.[c];
-        if(v===undefined || v===-1) continue;
-        const gridCol = isRight ? 4-c : c;
-        const k = masterKeys[r*5+gridCol];
-        k._val.textContent = v;
-        k._fill.style.height = `${Math.min(100, Math.max(0, v*100/ADC_MAX))}%`;
-    }
-    for(let r=0;r<3;r++){
-        const v = rows[r]?.[5];
-        if(v===undefined || v===-1) continue;
-        // Right half: thumb row order is reversed (row 0 = rightmost, row 2 = leftmost)
-        const thumbIdx = isRight ? 2-r : r;
-        const k = masterKeys[15+thumbIdx];
+        const k = keys[r*layout.cols+c];
+        if(!k || v===undefined || v===-1) continue;
         k._val.textContent = v;
         k._fill.style.height = `${Math.min(100, Math.max(0, v*100/ADC_MAX))}%`;
     }
 }
 
 function applyState(rows){
-    const isRight = currentHalf === 'right';
-    for(let r=0;r<3;r++) for(let c=0;c<5;c++){
-        const gridCol = isRight ? 4-c : c;
-        masterKeys[r*5+gridCol].classList.toggle('pressed', !!rows[r]?.[c]);
-    }
-    for(let r=0;r<3;r++){
-        const thumbIdx = isRight ? 2-r : r;
-        masterKeys[15+thumbIdx].classList.toggle('pressed', !!rows[r]?.[5]);
+    for(let r=0;r<layout.rows;r++) for(let c=0;c<layout.cols;c++){
+        const k = keys[r*layout.cols+c];
+        if(!k) continue;
+        k.classList.toggle('pressed', !!rows[r]?.[c]);
     }
 }
 
@@ -410,13 +549,14 @@ function fetchSelected(){
 function selectKey(row, col){
     selectedRC = [row, col];
     cfg.selLabel.textContent = `r${row}c${col}`;
-    masterKeys.forEach(k => k.classList.remove('selected'));
-    const idx = (col===5) ? 15+row : row*5+col;
-    if(masterKeys[idx]) masterKeys[idx].classList.add('selected');
+    keys.forEach(k => { if(k) k.classList.remove('selected'); });
+    const idx = row * layout.cols + col;
+    if(keys[idx]) keys[idx].classList.add('selected');
     fetchSelected();
 }
 
 buildCfgPanel();
+buildKeyboard();
 </script>
 </body>
 </html>
