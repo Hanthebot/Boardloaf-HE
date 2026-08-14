@@ -36,8 +36,8 @@
             "pin": "GP15"
         },
         "serial": {
-            "driver": "vendor",
-            "pin": "GP14"
+            "enabled": true,
+            "driver": "vendor"
         },
         "transport": {
             "sync": {
