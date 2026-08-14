@@ -1,5 +1,11 @@
 # Boardloaf-HE
 
+> rev1.1 uses the same firmware as rev1.
+> 
+> wiring was done again, and multiplexor can be soldered on both side
+> 
+> board is not tested yet
+
 ![boardloafhe](images/boadloafhe.jpg)
 
 Hall-effect variant of [Yuburoll's Boardloaf](https://github.com/yuburoll/Boardloaf), a 36-key split keyboard.
@@ -80,7 +86,7 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
   - If your board does not work, it's likely soldering issue. Try cleaning the board well and solder again
   - I think it's a good start on implementing random idea for HE keyboard
 
-![PCB](images/pcb-preview.png)
+![PCB](images/pcb-preview-rev1_1.png)
 
 ## Licenses
 All code under firmware folder follows GPL v3.
