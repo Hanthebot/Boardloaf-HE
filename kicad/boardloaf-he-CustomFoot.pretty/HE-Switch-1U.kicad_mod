@@ -6,7 +6,7 @@
 	(property "Reference" "${REFERENCE}"
 		(at -6.45 5.72 0)
 		(layer "F.SilkS")
-		(uuid "ebc532f5-e0a7-4cc5-8cf2-18b5a4763364")
+		(uuid "48ecc71a-1af8-4492-afc8-664691a410f9")
 		(effects
 			(font
 				(size 1 1)
@@ -19,7 +19,7 @@
 		(at 0 -7.9375 0)
 		(layer "Dwgs.User")
 		(hide yes)
-		(uuid "7a26664f-f009-46ef-bce7-14a462cec62d")
+		(uuid "31a8f868-9d46-454a-a750-b79a4df6b972")
 		(effects
 			(font
 				(size 0.8 0.8)
@@ -32,7 +32,7 @@
 		(unlocked yes)
 		(layer "B.Fab")
 		(hide yes)
-		(uuid "0284424c-5b00-4a71-b975-9e9346ea15ae")
+		(uuid "9d18895f-df58-417e-a125-a16289792165")
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -46,7 +46,7 @@
 		(unlocked yes)
 		(layer "B.Fab")
 		(hide yes)
-		(uuid "526a3df0-52d2-4615-923b-fb7e929c07de")
+		(uuid "6b5c8881-6662-40a1-a42a-9c6509ce4f29")
 		(effects
 			(font
 				(size 1.27 1.27)
