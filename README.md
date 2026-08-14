@@ -1,10 +1,8 @@
 # Boardloaf-HE
 
-> rev1.1 uses the same firmware as rev1.
+> rev2 uses full duplex communication between halves.
 > 
-> wiring was done again, and multiplexor can be soldered on both side
-> 
-> board is not tested yet
+> board / firmware is not tested yet
 
 ![boardloafhe](images/boadloafhe.jpg)
 
@@ -29,7 +27,7 @@ Based on Boardloaf and strongly inspired by [TrueStrike42](https://github.com/by
 | PJ320A TRRS socket   | 2   | ¥8/100 pcs ~= $1.2  | $1.2  |
 | RP2040 Zero          | 2   | ¥7.3/1 pc ~= $1.1   | $2.2  |
 - For capacitor, 0.1~1uf should be fine
-- And obviously, USB-C cable of your choice (with machine) and TRS/TRRS cable of your choice
+- And obviously, USB-C cable of your choice (with machine) and TRRS cable of your choice
 - Board cost: $9 or more
 
 ### Case
@@ -68,7 +66,7 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
 
 ## Improvements to be done
 - [ ] Support analog mousekey
-- [ ] Switch to full duplex / TRRS communication
+- [x] Switch to full duplex / TRRS communication
 - [x] Make SOT-23 pad larger, thus easier to solder
 - [ ] ~~Switch to blackpill mcu for better ADC (not in this repo)~~
 
@@ -86,7 +84,7 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
   - If your board does not work, it's likely soldering issue. Try cleaning the board well and solder again
   - I think it's a good start on implementing random idea for HE keyboard
 
-![PCB](images/pcb-preview-rev1_1.png)
+![PCB](images/pcb-preview-rev2.png)
 
 ## Licenses
 All code under firmware folder follows GPL v3.
