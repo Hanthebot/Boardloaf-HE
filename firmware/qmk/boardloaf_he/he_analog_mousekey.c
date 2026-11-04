@@ -6,6 +6,7 @@
 #include "host.h"
 #include "timer.h"
 #include "action.h"
+#include "mousekey.h"
 
 uint8_t analog_key_row[10] = {0};
 uint8_t analog_key_col[10] = {0};
@@ -121,7 +122,13 @@ void analog_mousekey_task(void) {
     uint16_t scroll_mask = (analog_activity_mask >> 4) & 0x0F;
     if (!cursor_mask && !scroll_mask) return;
 
-    report_mouse_t report = {0};
+    // Preserve the button state owned by QMK's mousekey subsystem; sending
+    // a zero-button report here would release a held mouse button.
+    report_mouse_t report = mousekey_get_report();
+    report.x = 0;
+    report.y = 0;
+    report.v = 0;
+    report.h = 0;
     int16_t dx = 0, dy = 0, dv = 0, dh = 0;
 
     static const int8_t dir_dx[4] = {0, 0, -1, 1};

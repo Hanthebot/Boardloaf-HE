@@ -68,7 +68,7 @@ Keycodes are defined via `SAFE_RANGE` (QMK user keycode base) and are available 
 | `KC_WH_R`     | 7             | Analog scroll right |
 | `KC_ACL0`     | 8             | Snipe modifier (repurposed) |
 
-The stock keycodes are intercepted in `process_record_kb()`, so QMK's normal time-based mousekey movement is replaced by depth-based analog movement. Mouse buttons (`KC_BTN1`…) still pass through unchanged.
+The stock keycodes are intercepted in `process_record_kb()`, so QMK's normal time-based mousekey movement is replaced by depth-based analog movement. Mouse buttons (`KC_BTN1`…) still pass through unchanged, and the analog task copies the current button state from `mousekey_get_report()` so a held button is never released by an analog movement report.
 
 ### Activity Tracking
 
