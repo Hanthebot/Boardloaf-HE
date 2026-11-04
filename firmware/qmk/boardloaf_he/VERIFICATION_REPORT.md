@@ -35,7 +35,7 @@ and ID numbering:
 | 2 | VIA table now shows correct base enum names and all IDs 17–26 |
 | 3 | "(planned)" labels removed (already done) |
 | 4 | "VIA IDs 17-22 reserved (no-op handlers)" → table now accurate |
-| 5–10 | Line counts updated to actual: mousekey .c 115, .h 22; multi-stage .h 22, .c 66; repeat .h 23, .c 67 (mousekey `.c` later grew to 169 when Vial-compatible stock keycode mapping was added) |
+| 5–10 | Line counts updated to actual: mousekey .c 115, .h 22; multi-stage .h 22, .c 66; repeat .h 23, .c 67 (mousekey `.c` later grew to 183 when Vial-compatible stock keycode mapping and report fixes were added) |
 | 11–12 | Checklists all checked ([x]) |
 | 13 | State diagram: added IDLE→SHALLOW transition on AM_MULTI press |
 | 14 | "+N" clarified as approximate added lines vs net delta |

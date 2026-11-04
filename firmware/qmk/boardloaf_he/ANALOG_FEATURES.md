@@ -220,9 +220,9 @@ Workaround: assign analog cursor/scroll keys to the half connected via USB (typi
 
 | File                     | Lines | Role |
 |--------------------------|-------|------|
-| `he_analog_mousekey.c`   | 169   | Stock/AM keycode mapping, tracking, curve math, task loop |
+| `he_analog_mousekey.c`   | 183   | Stock/AM keycode mapping, tracking, curve math, task loop |
 | `he_analog_mousekey.h`   | 22    | API, index constants |
-| `boardloaf_he.c`         | +4    | Delegate to module (net -16 vs base, refactored) |
+| `boardloaf_he.c`         | +47   | Delegate to module, analog EEPROM defaults/migration |
 | `he_switch_matrix.h`     | +17   | EEPROM + runtime fields |
 | `config.h`               | +7    | Defaults + new EEPROM size |
 | `rules.mk`               | +1    | SRC entry |
