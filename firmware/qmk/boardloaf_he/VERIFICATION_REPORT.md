@@ -4,7 +4,7 @@ Audit of `ANALOG_FEATURES.md` against each branch's actual implementation.
 
 ## Summary — All Discrepancies Resolved
 
-The audit identified 14 doc inaccuracies, 2 code bugs, and 1 cross-branch
+The audit identified 14 doc inaccuracies, 3 code bugs, and 1 cross-branch
 inconsistency. All have been fixed across the relevant branches.
 
 ## Fixes Applied
@@ -15,6 +15,7 @@ inconsistency. All have been fixed across the relevant branches.
 |---|--------|-------|-----|
 | A | mousekey | `compute_speed_fraction` compared `depth` (0-1000) against `deadzone_pct` (0-100) without scaling → default 50 gave 5%, not 50% | `deadzone = deadzone_pct * 10`; default 50→10 (10% → 100/1000) |
 | B | multi-stage | `split_pct`/`hysteresis` compared directly against 0-1000 depth → default split=50 gave 5% travel | `split_scaled = split * 10`; `hyst_scaled = hyst * 10` |
+| C | mousekey | Minimum-speed fallback compared `depth` (0-1000) against `deadzone` (0-100), so a key just past 1% travel could still move even when the configured deadzone was 10% | `deadzone_depth = deadzone * 10` used for the fallback check |
 
 ### VIA Enum Consistency
 

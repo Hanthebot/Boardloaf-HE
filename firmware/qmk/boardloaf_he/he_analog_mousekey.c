@@ -111,6 +111,7 @@ void analog_mousekey_task(void) {
     uint8_t  deadzone   = am_deadzone();
     uint8_t  snipe_div  = am_snipe_div();
     uint8_t  scroll_max = am_scroll_max();
+    uint16_t deadzone_depth = (uint16_t)deadzone * 10;
 
     static uint16_t last_mouse_time = 0;
     if (timer_elapsed(last_mouse_time) < interval) return;
@@ -132,7 +133,7 @@ void analog_mousekey_task(void) {
             uint16_t depth = get_key_depth(analog_key_row[idx], analog_key_col[idx]);
             uint32_t fraction = compute_speed_fraction(depth, curve, deadzone);
             int16_t speed = (int16_t)((fraction * max_speed) / 1000);
-            if (speed < 1 && depth > deadzone) speed = 1;
+            if (speed < 1 && depth > deadzone_depth) speed = 1;
             dx += dir_dx[i] * speed;
             dy += dir_dy[i] * speed;
         }
@@ -144,7 +145,7 @@ void analog_mousekey_task(void) {
             uint16_t depth = get_key_depth(analog_key_row[idx], analog_key_col[idx]);
             uint32_t fraction = compute_speed_fraction(depth, curve, deadzone);
             int16_t speed = (int16_t)((fraction * scroll_max) / 1000);
-            if (speed < 1 && depth > deadzone) speed = 1;
+            if (speed < 1 && depth > deadzone_depth) speed = 1;
             if (i < 2) {
                 dv += (i == 0 ? speed : -speed);
             } else {
