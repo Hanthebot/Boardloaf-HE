@@ -500,7 +500,8 @@
   "libraries": {
     "pinned_footprint_libs": [
       "boardloaf-CustomFoot",
-      "Keebio-Parts"
+      "Keebio-Parts",
+      "boardloaf-he-CustomFoot"
     ],
     "pinned_symbol_libs": []
   },
@@ -579,7 +580,7 @@
       "gencad": "",
       "idf": "",
       "netlist": "",
-      "plot": "../gubber/",
+      "plot": "../gerber/",
       "pos_files": "",
       "specctra_dsn": "",
       "step": "",
@@ -720,7 +721,7 @@
   "sheets": [
     [
       "3a093344-253b-4353-a388-64989d9a245c",
-      "boardloafhe"
+      "boardloaf-he"
     ]
   ],
   "text_variables": {},

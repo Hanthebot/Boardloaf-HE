@@ -63,10 +63,11 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
 ## Improvements to be done
 - [ ] Support analog mousekey
 - [ ] Switch to full duplex / TRRS communication
-- [ ] Make SOT-23 pad larger, thus easier to solder
+- [x] Make SOT-23 pad larger, thus easier to solder
 - [ ] ~~Switch to blackpill mcu for better ADC (not in this repo)~~
 
 ## Remarks
+- Initial config recommendation: 30% / 20% / 20% / 10% / 10% / 20% (APC act / release; RT init dead / act offset / release offset / bottom dead)
 - Documentation
   - Further documentation in progress
   - Plate KiCad file to be uploaded
@@ -82,9 +83,12 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
 ![PCB](images/pcb-preview.png)
 
 ## Licenses
-MIT license for all the code
+All code under firmware folder follows GPL v3.
+
+Webapp is MIT license.
+
 CC BY-SA 4.0 license for all hardware / design: inherited from Boardloaf
 
 ## Disclaimer
-Webapp and firmware were vibe coded.
-I checked it working, but will double check.
+Webapp and firmware modification were vibe coded.
+I checked it working.
