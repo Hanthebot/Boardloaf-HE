@@ -14,10 +14,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
+
 #include "quantum.h"
 #include "he_switch_matrix.h"
 #include "analog_common.h"
 #include "he_analog_mousekey.h"
+#include "eeprom.h"
+#include "nvm/eeprom/nvm_eeprom_eeconfig_internal.h"
+
+// EEPROM datablock size before the analog fields were appended.  QMK uses
+// the datablock size as its version, so a size change alone would make the
+// old datablock invalid and reset every per-key calibration value.
+#define LEGACY_EEPROM_KB_DATA_SIZE 217
 
 void eeconfig_init_kb(void) {
     eeprom_he_config.actuation_mode = DEFAULT_ACTUATION_MODE;
@@ -45,11 +54,27 @@ void eeconfig_init_kb(void) {
 }
 
 void keyboard_post_init_kb(void) {
-    eeconfig_read_kb_datablock(&eeprom_he_config, 0, EECONFIG_KB_DATA_SIZE);
+    bool     am_config_migrated = false;
+    uint32_t stored_version     = eeprom_read_dword(EECONFIG_KEYBOARD);
+
+    if (stored_version == LEGACY_EEPROM_KB_DATA_SIZE) {
+        // The old 217-byte layout is a strict prefix of the new one.  Read
+        // it raw (the public API would reject it as version-mismatched) so
+        // existing per-key calibration and bottoming data survive the
+        // upgrade instead of being reset to zero.
+        eeprom_read_block(&eeprom_he_config, EECONFIG_KB_DATABLOCK, LEGACY_EEPROM_KB_DATA_SIZE);
+        memset((uint8_t *)&eeprom_he_config + LEGACY_EEPROM_KB_DATA_SIZE, 0, sizeof(eeprom_he_config) - LEGACY_EEPROM_KB_DATA_SIZE);
+        am_config_migrated = true;
+    } else if (eeconfig_is_kb_datablock_valid()) {
+        eeconfig_read_kb_datablock(&eeprom_he_config, 0, EECONFIG_KB_DATA_SIZE);
+    } else {
+        // Blank or unknown datablock: initialize the keyboard defaults.
+        eeconfig_init_kb();
+        eeconfig_read_kb_datablock(&eeprom_he_config, 0, EECONFIG_KB_DATA_SIZE);
+    }
 
     // Migrate an EEPROM written before the analog fields existed.  Without
     // this, the extra bytes would be interpreted as curve/deadzone/etc.
-    bool am_config_migrated = false;
     if (eeprom_he_config.an_reserved[0] != AM_EEPROM_VERSION) {
         eeprom_he_config.an_deadzone_pct   = AM_DEADZONE_PCT;
         eeprom_he_config.an_curve_exponent = AM_CURVE_EXPONENT;
