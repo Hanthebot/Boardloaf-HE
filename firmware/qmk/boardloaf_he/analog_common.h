@@ -17,6 +17,11 @@ enum analog_keycodes {
     AM_MULTI,
 };
 
+// Vial's keycode picker only knows the stock QMK keycode list, so it cannot
+// assign the AM_* keycodes above.  The analog mousekey module also accepts
+// the stock KC_MS_*/KC_WH_*/KC_ACL0 keycodes for Vial-only use; see
+// he_analog_mousekey.c and ANALOG_FEATURES.md.
+
 #define AM_MS_UP_BIT    (1 << 0)
 #define AM_MS_DOWN_BIT  (1 << 1)
 #define AM_MS_LEFT_BIT  (1 << 2)
