@@ -196,6 +196,8 @@ New fields in `eeprom_he_config_t`:
 
 Total EEPROM: 231 bytes (was 217).
 
+`an_reserved[0]` stores `AM_EEPROM_VERSION`. On boot, if the byte does not match, the analog fields are migrated to the defaults above and written back. This keeps boards flashed over an older EEPROM from interpreting leftover bytes as curve/deadzone values.
+
 Runtime counterparts in `he_config_t` are loaded from EEPROM in `keyboard_post_init_kb()` and updated live via VIA (saved to EEPROM on set).
 
 ### VIA / Webapp Configuration (optional)

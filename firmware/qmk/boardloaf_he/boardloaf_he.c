@@ -39,12 +39,28 @@ void eeconfig_init_kb(void) {
     eeprom_he_config.an_scroll_max      = AM_SCROLL_MAX;
     eeprom_he_config.an_interval_ms     = AM_INTERVAL_MS;
     for (uint8_t i = 0; i < 8; i++) eeprom_he_config.an_reserved[i] = 0;
+    eeprom_he_config.an_reserved[0] = AM_EEPROM_VERSION;
     eeconfig_update_kb_datablock(&eeprom_he_config, 0, EECONFIG_KB_DATA_SIZE);
     eeconfig_init_user();
 }
 
 void keyboard_post_init_kb(void) {
     eeconfig_read_kb_datablock(&eeprom_he_config, 0, EECONFIG_KB_DATA_SIZE);
+
+    // Migrate an EEPROM written before the analog fields existed.  Without
+    // this, the extra bytes would be interpreted as curve/deadzone/etc.
+    bool am_config_migrated = false;
+    if (eeprom_he_config.an_reserved[0] != AM_EEPROM_VERSION) {
+        eeprom_he_config.an_deadzone_pct   = AM_DEADZONE_PCT;
+        eeprom_he_config.an_curve_exponent = AM_CURVE_EXPONENT;
+        eeprom_he_config.an_max_speed      = AM_MAX_SPEED;
+        eeprom_he_config.an_snipe_divisor  = AM_SNIPE_DIVISOR;
+        eeprom_he_config.an_scroll_max     = AM_SCROLL_MAX;
+        eeprom_he_config.an_interval_ms    = AM_INTERVAL_MS;
+        for (uint8_t i = 0; i < 8; i++) eeprom_he_config.an_reserved[i] = 0;
+        eeprom_he_config.an_reserved[0] = AM_EEPROM_VERSION;
+        am_config_migrated              = true;
+    }
 
     he_config.actuation_mode = eeprom_he_config.actuation_mode;
     he_config.bottoming_calibration = false;
@@ -79,6 +95,10 @@ void keyboard_post_init_kb(void) {
     he_config.an_snipe_divisor  = eeprom_he_config.an_snipe_divisor;
     he_config.an_scroll_max     = eeprom_he_config.an_scroll_max;
     he_config.an_interval_ms    = eeprom_he_config.an_interval_ms;
+
+    if (am_config_migrated) {
+        eeconfig_update_kb_datablock(&eeprom_he_config, 0, EECONFIG_KB_DATA_SIZE);
+    }
 
     keyboard_post_init_user();
 }

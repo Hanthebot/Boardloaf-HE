@@ -43,6 +43,11 @@
 #define AM_SCROLL_MAX        5
 #define AM_INTERVAL_MS       10
 
+// Stored in an_reserved[0] so an EEPROM written by an older firmware
+// (before the analog fields existed) is migrated to the defaults instead
+// of picking up random bytes as curve/deadzone values.
+#define AM_EEPROM_VERSION    0xA5
+
 #define VIA_CUSTOM_LIGHTING_ENABLE
 
 #define WEAK_BITRATE
