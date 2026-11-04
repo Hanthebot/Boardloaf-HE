@@ -178,6 +178,8 @@ When an analog keycode is pressed, `analog_mousekey_process_record()` captures t
 
 Because `AM_SNIPE` is not available in Vial's keycode picker, `KC_ACL0` (the stock "mouse acceleration 0" keycode) is repurposed as the snipe key. Since analog movement replaces QMK's acceleration-based movement anyway, this costs nothing and gives Vial users a snipe key without any custom keycode or webapp configuration.
 
+Snipe keeps a minimum of one movement unit per report in each active direction, so a fully pressed key does not become completely stationary when divided by the snipe divisor.
+
 ### EEPROM Config
 
 **File:** `he_switch_matrix.h` (extended)

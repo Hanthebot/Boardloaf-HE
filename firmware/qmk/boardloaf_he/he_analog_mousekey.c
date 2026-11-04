@@ -162,8 +162,14 @@ void analog_mousekey_task(void) {
     }
 
     if (analog_activity_mask & AM_SNIPE_BIT) {
+        int16_t pre_dx = dx;
+        int16_t pre_dy = dy;
         dx /= snipe_div;
         dy /= snipe_div;
+        // Keep at least one unit of movement in each active direction;
+        // otherwise a fully pressed key (speed < divisor) would stop moving.
+        if (pre_dx && !dx) dx = (pre_dx > 0) ? 1 : -1;
+        if (pre_dy && !dy) dy = (pre_dy > 0) ? 1 : -1;
     }
 
     report.x = (int8_t)(dx > 127 ? 127 : dx < -127 ? -127 : dx);
