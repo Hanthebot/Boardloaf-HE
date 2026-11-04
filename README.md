@@ -57,11 +57,12 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
 
 ## Features
 - Supports both APC and rapid trigger
+- Analog mouse keys driven by press depth: assign the stock Mouse/Wheel keycodes in Vial (hold Mouse Accel 0 for snipe); no webapp configuration required
 - Cheap, simple, and working
 - 3 multiplexor on each side, scanning 6 keys per mux
 
 ## Improvements to be done
-- [ ] Support analog mousekey
+- [x] Support analog mousekey
 - [ ] Switch to full duplex / TRRS communication
 - [x] Make SOT-23 pad larger, thus easier to solder
 - [ ] ~~Switch to blackpill mcu for better ADC (not in this repo)~~
