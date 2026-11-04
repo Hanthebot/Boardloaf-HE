@@ -54,7 +54,21 @@ depth = ((noise_ceiling - sw_value) * 1000) / range  // 0 (resting) … 1000 (bo
 | `AM_SNIPE`  | bit 8      | 8     | Sniper modifier       |
 | `AM_MULTI`  | bit 9      | 9     | Multi-stage trigger   |
 
-Keycodes are defined via `SAFE_RANGE` (QMK user keycode base). Included via `analog_common.h` in both the dev and vial keymaps — VIAL's preprocessor discovers them and they appear in the keycode picker.
+Keycodes are defined via `SAFE_RANGE` (QMK user keycode base) and are available to compiled keymaps. They are **not** discoverable by the Vial GUI keycode picker (Vial only knows the stock QMK keycode list). For Vial-only use, assign the stock mouse keycodes instead — the mousekey feature maps them onto the same internal slots:
+
+| Stock keycode | Internal slot | Analog function |
+|---------------|---------------|-----------------|
+| `KC_MS_U`     | 0             | Analog cursor up |
+| `KC_MS_D`     | 1             | Analog cursor down |
+| `KC_MS_L`     | 2             | Analog cursor left |
+| `KC_MS_R`     | 3             | Analog cursor right |
+| `KC_WH_U`     | 4             | Analog scroll up |
+| `KC_WH_D`     | 5             | Analog scroll down |
+| `KC_WH_L`     | 6             | Analog scroll left |
+| `KC_WH_R`     | 7             | Analog scroll right |
+| `KC_ACL0`     | 8             | Snipe modifier (repurposed) |
+
+The stock keycodes are intercepted in `process_record_kb()`, so QMK's normal time-based mousekey movement is replaced by depth-based analog movement. Mouse buttons (`KC_BTN1`…) still pass through unchanged.
 
 ### Activity Tracking
 
@@ -107,7 +121,9 @@ void housekeeping_task_kb(void);
 ```
 process_record_kb()         ──► analog_mousekey_process_record()
                                      │
-                              stores row/col per keycode idx
+                              maps stock KC_MS_*/KC_WH_*/KC_ACL0 and
+                              optional AM_* keycodes to internal slots
+                              stores row/col per slot
                               sets bit in analog_activity_mask
 
 housekeeping_task_kb()      ──► analog_mousekey_task()
@@ -158,7 +174,9 @@ When an analog keycode is pressed, `analog_mousekey_process_record()` captures t
 
 ### Sniper Key
 
-`AM_SNIPE` acts as a modifier: when held, all cursor movement is divided by `an_snipe_divisor` (default 10). Assignable to any key in VIAL. Works for both local and remote half keys.
+`AM_SNIPE` acts as a modifier: when held, all cursor movement is divided by `an_snipe_divisor` (default 10). Works for both local and remote half keys.
+
+Because `AM_SNIPE` is not available in Vial's keycode picker, `KC_ACL0` (the stock "mouse acceleration 0" keycode) is repurposed as the snipe key. Since analog movement replaces QMK's acceleration-based movement anyway, this costs nothing and gives Vial users a snipe key without any custom keycode or webapp configuration.
 
 ### EEPROM Config
 
@@ -180,9 +198,11 @@ Total EEPROM: 231 bytes (was 217).
 
 Runtime counterparts in `he_config_t` are loaded from EEPROM in `keyboard_post_init_kb()` and updated live via VIA (saved to EEPROM on set).
 
-### VIA Configuration
+### VIA / Webapp Configuration (optional)
 
-Six parameters are accessible via VIA raw HID: curve, deadzone, max speed, snipe divisor (IDs 18–21), scroll max (ID 25), and interval (ID 26). Each is a single byte — get/set with immediate effect on runtime config, saved to EEPROM on set. A companion webapp update would add slider controls (see webapp/ section in README for existing calibration webapp pattern).
+Six parameters are accessible via VIA raw HID: curve, deadzone, max speed, snipe divisor (IDs 18–21), scroll max (ID 25), and interval (ID 26). Each is a single byte — get/set with immediate effect on runtime config, saved to EEPROM on set.
+
+**No webapp configuration is required.** The firmware ships with usable defaults, and the runtime values are sanitised on read, so an old/incompatible EEPROM or a bogus VIA write cannot disable movement. A webapp UI for these parameters is optional; the existing calibration webapp can be extended later if desired.
 
 ### Split Keyboard Limitation
 
@@ -196,7 +216,7 @@ Workaround: assign analog cursor/scroll keys to the half connected via USB (typi
 
 | File                     | Lines | Role |
 |--------------------------|-------|------|
-| `he_analog_mousekey.c`   | 115   | Tracking, curve math, task loop |
+| `he_analog_mousekey.c`   | 169   | Stock/AM keycode mapping, tracking, curve math, task loop |
 | `he_analog_mousekey.h`   | 22    | API, index constants |
 | `boardloaf_he.c`         | +4    | Delegate to module (net -16 vs base, refactored) |
 | `he_switch_matrix.h`     | +17   | EEPROM + runtime fields |
@@ -310,7 +330,8 @@ Use this to confirm implementation quality across all branches:
 ### Base Branch
 - [ ] `he_depth` computed every matrix scan cycle
 - [ ] `he_depth` not used by `he_update_key()` — existing APC/RT unchanged
-- [ ] Custom keycodes compile and appear in VIAL keycode picker
+- [ ] Custom keycodes compile and are usable in compiled keymaps
+- [ ] Stock mouse keycodes (`KC_MS_*`, `KC_WH_*`, `KC_ACL0`) are usable from Vial
 - [ ] `process_record_kb()` returns `false` for analog keycodes, `true` for others
 - [ ] `housekeeping_task_kb()` available for child branches
 - [ ] VIA IDs 17–22 reserved (no-op handlers)
@@ -318,6 +339,9 @@ Use this to confirm implementation quality across all branches:
 
 ### Analog Mousekey Branch
 - [ ] `AM_MS_*` keycodes tracked with row/col position
+- [ ] Stock `KC_MS_*`/`KC_WH_*` keycodes map to the same slots (Vial-only use)
+- [ ] `KC_ACL0` works as the Vial-assignable snipe key
+- [ ] Analog keycodes are consumed, so default QMK mousekey movement is suppressed
 - [ ] `analog_mousekey_task()` rate-limited via `an_interval_ms`
 - [ ] Exponential curve: depth→speed mapping monotonic for exponent 1–5
 - [ ] Deadzone correctly suppresses speed for depth ≤ threshold
