@@ -2388,10 +2388,6 @@
 		(uuid "af45f93f-43c3-4f08-a09a-c481c399ff31")
 	)
 	(no_connect
-		(at 53.34 27.94)
-		(uuid "d7a6e2a7-8c0e-43de-8221-056eef1281b8")
-	)
-	(no_connect
 		(at 60.96 53.34)
 		(uuid "dab2e7b6-f306-48e9-8238-1aa57d5518d3")
 	)
@@ -5419,7 +5415,7 @@
 			)
 		)
 	)
-	(global_label "VCC"
+	(global_label "5V"
 		(shape passive)
 		(at 40.64 78.74 0)
 		(fields_autoplaced yes)
@@ -5431,7 +5427,7 @@
 		)
 		(uuid "2795967d-8b65-4215-a0e9-15c8785d2d99")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 46.1425 78.74 0)
+			(at 44.812 78.74 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5803,6 +5799,30 @@
 			)
 		)
 	)
+	(global_label "5V"
+		(shape passive)
+		(at 53.34 27.94 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "8d975cdd-7a6c-4279-928f-ee8facb6b992")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 49.168 27.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+	)
 	(global_label "RX"
 		(shape input)
 		(at 78.74 30.48 0)
@@ -5971,7 +5991,7 @@
 			)
 		)
 	)
-	(global_label "VCC"
+	(global_label "5V"
 		(shape passive)
 		(at 40.64 93.98 0)
 		(fields_autoplaced yes)
@@ -5983,7 +6003,7 @@
 		)
 		(uuid "da430710-c2c1-4de5-9f0a-a5d4fd0701c7")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 46.1425 93.98 0)
+			(at 44.812 93.98 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
