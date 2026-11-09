@@ -163,30 +163,22 @@ Deadzone can be set 0–100 (% of travel). Depth below deadzone yields zero spee
 
 ### Speed Mapping
 
-QMK's default mousekey speed is the **normal-press reference**, not the full-press reference. Most keys are pressed well before bottoming out, so that is where the default QMK feel should land:
+The analog layer follows QMK's mousekey speed curve exactly, then scales it down by key depth:
 
-- `AM_PRESS_REF_PCT` (30%) travel → 1× QMK default mousekey speed
-- Full press → `AM_PRESS_FULL_PCT` (200% = 2× QMK default), capped
-- Shallow press → proportionally slower
-- Deadzone → zero speed
+- QMK's own ramp is used: `mk_delay`, `mk_interval`, `mk_time_to_max`, `QS_mousekey_move_delta`, and `mk_max_speed`.
+- Full press → the same units-over-time curve as QMK's mouse keys.
+- Shallower press → the same curve scaled down by `compute_speed_fraction()` (deadzone + curve exponent).
+- Deeper press → up to the full QMK curve.
+- Deadzone → zero speed.
 
-The press curve is normalised at `AM_PRESS_REF_PCT`, so changing `an_curve_exponent` reshapes the shallow/deep response without moving the reference point.
-
-Time-based acceleration is a power curve, not a linear ramp:
-
-- Delay comes from QMK: `mk_delay`.
-- Window is `mk_time_to_max × mk_interval`, capped at `AM_TIME_RAMP_MAX_MS` (400 ms) so it is actually felt.
-- After the delay, speed ramps by `(elapsed / window)^AM_TIME_EXP`.
-- `AM_TIME_EXP = 2` gives a back-loaded, quadratic ramp.
-- Maximum time multiplier is `AM_TIME_FULL_PCT` (175% = 1.75×).
-- Snipe disables time acceleration and then divides movement, preserving precision mode.
+So the speed over time (initial step, delay, linear ramp to max) is QMK's, not a custom time multiplier. Key depth only attenuates it.
 
 The analog max-speed fields are relative multipliers with their historical defaults:
 
 - `an_max_speed = 10` → 1× QMK cursor base
 - `an_scroll_max = 5` → 1× QMK wheel base
 
-`an_interval_ms` changes report rate, not units/second: speed is scaled to the report interval, and a Q8.8 residual accumulator preserves fractional movement. So 1 ms reports (1000 Hz) have the same speed feel as 10 ms or 20 ms reports.
+`an_interval_ms` changes report rate, not units/second: speed is scaled to the report interval, and a Q8.8 residual accumulator preserves fractional movement. So 1 ms reports (1000 Hz) have the same speed feel as 10 ms or 20 ms reports. Snipe uses the initial QMK unit and then divides movement, keeping precision mode slow and predictable.
 
 ### Key Position Tracking
 
@@ -375,8 +367,8 @@ Use this to confirm implementation quality across all branches:
 - [ ] Analog keycodes are consumed, so default QMK mousekey movement is suppressed
 - [ ] `analog_mousekey_task()` rate-limited via `an_interval_ms`
 - [ ] Exponential curve: depth→speed mapping monotonic for exponent 1–5
-- [ ] Normal-press travel (30%) matches QMK default speed; deep press is faster
-- [ ] Time acceleration uses QMK delay/time-to-max (capped) with a power curve and is disabled by snipe
+- [ ] Full press follows QMK's mousekey speed curve over time
+- [ ] Key depth scales that curve down; snipe stays slow and predictable
 - [ ] Deadzone correctly suppresses speed for depth ≤ threshold
 - [ ] Snipe divisor applied to cursor only (not scroll)
 - [ ] Scroll reported via `v`/`h` axes independently
