@@ -163,21 +163,22 @@ Deadzone can be set 0–100 (% of travel). Depth below deadzone yields zero spee
 
 ### Speed Mapping
 
-QMK's default mousekey speed is the **middle-press reference**, not the full-press reference. Most keys are pressed around mid-travel, so that is where the default QMK feel should land:
+QMK's default mousekey speed is the **normal-press reference**, not the full-press reference. Most keys are pressed well before bottoming out, so that is where the default QMK feel should land:
 
-- 50% travel → 1× QMK default mousekey speed
-- Full press → `AM_PRESS_FULL_PCT` (200% = 2× QMK default), capped
+- `AM_PRESS_REF_PCT` (40%) travel → 1× QMK default mousekey speed
+- Full press → `AM_PRESS_FULL_PCT` (250% = 2.5× QMK default), capped
 - Shallow press → proportionally slower
 - Deadzone → zero speed
 
-The press curve is normalised at 50% travel, so changing `an_curve_exponent` reshapes the shallow/deep response without moving the mid-press reference.
+The press curve is normalised at `AM_PRESS_REF_PCT`, so changing `an_curve_exponent` reshapes the shallow/deep response without moving the reference point.
 
 Time-based acceleration is a power curve, not a linear ramp:
 
-- Delay and time window come from QMK: `mk_delay` and `mk_time_to_max × mk_interval`.
+- Delay comes from QMK: `mk_delay`.
+- Window is `mk_time_to_max × mk_interval`, capped at `AM_TIME_RAMP_MAX_MS` (400 ms) so it is actually felt.
 - After the delay, speed ramps by `(elapsed / window)^AM_TIME_EXP`.
 - `AM_TIME_EXP = 2` gives a back-loaded, quadratic ramp.
-- Maximum time multiplier is `AM_TIME_FULL_PCT` (175% = 1.75×).
+- Maximum time multiplier is `AM_TIME_FULL_PCT` (200% = 2×).
 - Snipe disables time acceleration and then divides movement, preserving precision mode.
 
 The analog max-speed fields are relative multipliers with their historical defaults:
@@ -374,8 +375,8 @@ Use this to confirm implementation quality across all branches:
 - [ ] Analog keycodes are consumed, so default QMK mousekey movement is suppressed
 - [ ] `analog_mousekey_task()` rate-limited via `an_interval_ms`
 - [ ] Exponential curve: depth→speed mapping monotonic for exponent 1–5
-- [ ] Mid-travel press matches QMK default speed; deep press is faster
-- [ ] Time acceleration uses QMK delay/time-to-max with a power curve and is disabled by snipe
+- [ ] Normal-press travel (40%) matches QMK default speed; deep press is faster
+- [ ] Time acceleration uses QMK delay/time-to-max (capped) with a power curve and is disabled by snipe
 - [ ] Deadzone correctly suppresses speed for depth ≤ threshold
 - [ ] Snipe divisor applied to cursor only (not scroll)
 - [ ] Scroll reported via `v`/`h` axes independently

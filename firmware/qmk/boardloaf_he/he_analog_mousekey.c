@@ -153,12 +153,14 @@ void analog_mousekey_task(void) {
     uint16_t cursor_base = analog_base_unit(QS_mousekey_move_delta, mk_max_speed, am_max_speed(), 10, MOUSEKEY_MOVE_MAX);
     uint16_t scroll_base = analog_base_unit(MOUSEKEY_WHEEL_DELTA, mk_wheel_max_speed, am_scroll_max(), 5, MOUSEKEY_WHEEL_MAX);
 
-    uint32_t mid_fraction = compute_speed_fraction(500, curve, deadzone);
+    uint32_t mid_fraction = compute_speed_fraction(AM_PRESS_REF_PCT * 10, curve, deadzone);
     uint32_t press_max_q8 = AM_PRESS_FULL_PCT * 256 / 100;
     uint32_t cursor_delay = (uint32_t)mk_delay * 10;
     uint32_t cursor_ramp  = (uint32_t)mk_time_to_max * (mk_interval ? mk_interval : 1);
     uint32_t scroll_delay = (uint32_t)mk_wheel_delay * 10;
     uint32_t scroll_ramp  = (uint32_t)mk_wheel_time_to_max * (mk_wheel_interval ? mk_wheel_interval : 1);
+    if (cursor_ramp > AM_TIME_RAMP_MAX_MS) cursor_ramp = AM_TIME_RAMP_MAX_MS;
+    if (scroll_ramp > AM_TIME_RAMP_MAX_MS) scroll_ramp = AM_TIME_RAMP_MAX_MS;
 
     static uint16_t last_mouse_time = 0;
     if (timer_elapsed(last_mouse_time) < interval) return;
