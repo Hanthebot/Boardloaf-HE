@@ -161,23 +161,31 @@ Exponent 1–5: `1` = linear/reactive, `2` = quadratic (balance), `3+` = cubic+ 
 
 Deadzone can be set 0–100 (% of travel). Depth below deadzone yields zero speed. This prevents cursor drift from resting fingers.
 
-### QMK-Compatible Speed Ramp
+### Speed Mapping
 
-The analog layer does not invent its own speed scale. At full press it follows QMK's mousekey speed ramp:
+QMK's default mousekey speed is the **middle-press reference**, not the full-press reference. Most keys are pressed around mid-travel, so that is where the default QMK feel should land:
 
-- Initial unit = QMK `QS_mousekey_move_delta`
-- Ramp starts after QMK `mk_delay` (`MOUSEKEY_DELAY`)
-- Ramps over QMK `mk_time_to_max` events spaced by `mk_interval`
-- Max unit = QMK `mk_max_speed` (cursor) / `mk_wheel_max_speed` (scroll)
+- 50% travel → 1× QMK default mousekey speed
+- Full press → `AM_PRESS_FULL_PCT` (200% = 2× QMK default), capped
+- Shallow press → proportionally slower
+- Deadzone → zero speed
 
-Press depth scales that QMK speed from 0 to 100% via the curve above. A full press therefore feels like a standard QMK mousekey; a partial press is proportionally slower.
+The press curve is normalised at 50% travel, so changing `an_curve_exponent` reshapes the shallow/deep response without moving the mid-press reference.
 
-The analog max-speed fields act as relative multipliers with their historical defaults:
+Time-based acceleration is a power curve, not a linear ramp:
 
-- `an_max_speed = 10` → 1× QMK cursor max
-- `an_scroll_max = 5` → 1× QMK wheel max
+- Delay and time window come from QMK: `mk_delay` and `mk_time_to_max × mk_interval`.
+- After the delay, speed ramps by `(elapsed / window)^AM_TIME_EXP`.
+- `AM_TIME_EXP = 2` gives a back-loaded, quadratic ramp.
+- Maximum time multiplier is `AM_TIME_FULL_PCT` (175% = 1.75×).
+- Snipe disables time acceleration and then divides movement, preserving precision mode.
 
-`an_interval_ms` changes report rate, not units/second: speed is scaled to the report interval, and a Q8.8 residual accumulator preserves fractional movement. So 1 ms reports (1000 Hz) have the same speed feel as 10 ms or 20 ms reports. Snipe uses the initial QMK unit and then divides, keeping precision mode slow and predictable.
+The analog max-speed fields are relative multipliers with their historical defaults:
+
+- `an_max_speed = 10` → 1× QMK cursor base
+- `an_scroll_max = 5` → 1× QMK wheel base
+
+`an_interval_ms` changes report rate, not units/second: speed is scaled to the report interval, and a Q8.8 residual accumulator preserves fractional movement. So 1 ms reports (1000 Hz) have the same speed feel as 10 ms or 20 ms reports.
 
 ### Key Position Tracking
 
@@ -238,7 +246,7 @@ Workaround: assign analog cursor/scroll keys to the half connected via USB (typi
 
 | File                     | Lines | Role |
 |--------------------------|-------|------|
-| `he_analog_mousekey.c`   | 274   | Stock/AM keycode mapping, tracking, QMK speed ramp, fixed-point task loop |
+| `he_analog_mousekey.c`   | 266   | Stock/AM keycode mapping, tracking, centred press/time mapping, fixed-point task loop |
 | `he_analog_mousekey.h`   | 22    | API, index constants |
 | `boardloaf_he.c`         | +47   | Delegate to module, analog EEPROM defaults/migration |
 | `he_switch_matrix.h`     | +17   | EEPROM + runtime fields |
@@ -366,7 +374,8 @@ Use this to confirm implementation quality across all branches:
 - [ ] Analog keycodes are consumed, so default QMK mousekey movement is suppressed
 - [ ] `analog_mousekey_task()` rate-limited via `an_interval_ms`
 - [ ] Exponential curve: depth→speed mapping monotonic for exponent 1–5
-- [ ] Speed ramp follows QMK `mk_delay`/`mk_time_to_max` and is disabled by snipe
+- [ ] Mid-travel press matches QMK default speed; deep press is faster
+- [ ] Time acceleration uses QMK delay/time-to-max with a power curve and is disabled by snipe
 - [ ] Deadzone correctly suppresses speed for depth ≤ threshold
 - [ ] Snipe divisor applied to cursor only (not scroll)
 - [ ] Scroll reported via `v`/`h` axes independently

@@ -43,6 +43,14 @@
 #define AM_SCROLL_MAX        5
 #define AM_INTERVAL_MS       10
 
+// Press mapping is centred so 50% travel = QMK's default mousekey speed.
+// Full press is faster; shallow press is slower.
+#define AM_PRESS_FULL_PCT    200
+// Time-based acceleration uses QMK's delay/time-to-max window, with a
+// power curve so speed builds up more aggressively during long holds.
+#define AM_TIME_FULL_PCT     175
+#define AM_TIME_EXP          2
+
 // Stored in an_reserved[0] so an EEPROM written by an older firmware
 // (before the analog fields existed) is migrated to the defaults instead
 // of picking up random bytes as curve/deadzone values.

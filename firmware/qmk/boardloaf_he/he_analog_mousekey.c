@@ -117,44 +117,30 @@ static uint16_t get_key_depth(uint8_t row, uint8_t col) {
     return he_depth[row][col];
 }
 
-// QMK's mousekey speed ramp, evaluated from elapsed time instead of the
-// internal repeat counter.  The returned value is QMK's per-event unit.
-static uint16_t qmk_cursor_unit(uint32_t hold_ms, uint8_t max_speed) {
-    uint16_t delta = QS_mousekey_move_delta;
-    uint32_t delay = (uint32_t)mk_delay * 10;
-    uint16_t unit;
-
-    if (hold_ms < delay) {
-        unit = delta;
-    } else if (mk_interval == 0 || mk_time_to_max == 0) {
-        unit = delta * max_speed;
-    } else {
-        uint32_t repeat = 1 + (hold_ms - delay) / mk_interval;
-        unit = (repeat >= mk_time_to_max) ? (uint16_t)(delta * max_speed) : (uint16_t)(delta * max_speed * repeat / mk_time_to_max);
-    }
-
-    if (unit > MOUSEKEY_MOVE_MAX) unit = MOUSEKEY_MOVE_MAX;
+// QMK's per-event unit at the analog multiplier's default (10 / 5 = 1x).
+static uint16_t analog_base_unit(uint32_t delta, uint8_t qmk_max, uint8_t analog_mult, uint8_t analog_default, uint16_t limit) {
+    uint32_t unit = delta * qmk_max * analog_mult / analog_default;
+    if (unit > limit) unit = limit;
     if (unit == 0) unit = 1;
-    return unit;
+    return (uint16_t)unit;
 }
 
-static uint16_t qmk_scroll_unit(uint32_t hold_ms, uint8_t max_speed) {
-    uint16_t delta = MOUSEKEY_WHEEL_DELTA;
-    uint32_t delay = (uint32_t)mk_wheel_delay * 10;
-    uint16_t unit;
+// Power-curve time acceleration.  QMK's delay/time-to-max define the
+// window; AM_TIME_EXP makes the ramp back-loaded instead of linear.
+static uint32_t time_mult_q8(uint32_t hold_ms, bool snipe_active, uint32_t delay_ms, uint32_t ramp_ms) {
+    if (snipe_active || ramp_ms == 0 || hold_ms <= delay_ms) return 256;
 
-    if (hold_ms < delay) {
-        unit = delta;
-    } else if (mk_wheel_interval == 0 || mk_wheel_time_to_max == 0) {
-        unit = delta * max_speed;
-    } else {
-        uint32_t repeat = 1 + (hold_ms - delay) / mk_wheel_interval;
-        unit = (repeat >= mk_wheel_time_to_max) ? (uint16_t)(delta * max_speed) : (uint16_t)(delta * max_speed * repeat / mk_wheel_time_to_max);
+    uint32_t x = hold_ms - delay_ms;
+    if (x > ramp_ms) x = ramp_ms;
+
+    uint32_t t_q8   = x * 256 / ramp_ms;
+    uint32_t pow_q8 = t_q8;
+    for (uint8_t i = 1; i < AM_TIME_EXP; i++) {
+        pow_q8 = pow_q8 * t_q8 / 256;
     }
 
-    if (unit > MOUSEKEY_WHEEL_MAX) unit = MOUSEKEY_WHEEL_MAX;
-    if (unit == 0) unit = 1;
-    return unit;
+    uint32_t max_q8 = AM_TIME_FULL_PCT * 256 / 100;
+    return 256 + (max_q8 - 256) * pow_q8 / 256;
 }
 
 void analog_mousekey_task(void) {
@@ -163,16 +149,16 @@ void analog_mousekey_task(void) {
     uint8_t  deadzone  = am_deadzone();
     uint8_t  snipe_div = am_snipe_div();
 
-    // QMK's mousekey max speed is the reference.  The analog fields act as
-    // relative multipliers with their historical defaults (10 / 5 = 1x).
-    uint16_t cursor_max = (uint16_t)mk_max_speed * am_max_speed() / 10;
-    uint16_t scroll_max = (uint16_t)mk_wheel_max_speed * am_scroll_max() / 5;
-    if (cursor_max < 1) cursor_max = 1;
-    if (cursor_max > 127) cursor_max = 127;
-    if (scroll_max < 1) scroll_max = 1;
-    if (scroll_max > 127) scroll_max = 127;
-    uint8_t cursor_max_speed = (uint8_t)cursor_max;
-    uint8_t scroll_max_speed = (uint8_t)scroll_max;
+    // QMK's default max unit is the reference; 50% press is centred on it.
+    uint16_t cursor_base = analog_base_unit(QS_mousekey_move_delta, mk_max_speed, am_max_speed(), 10, MOUSEKEY_MOVE_MAX);
+    uint16_t scroll_base = analog_base_unit(MOUSEKEY_WHEEL_DELTA, mk_wheel_max_speed, am_scroll_max(), 5, MOUSEKEY_WHEEL_MAX);
+
+    uint32_t mid_fraction = compute_speed_fraction(500, curve, deadzone);
+    uint32_t press_max_q8 = AM_PRESS_FULL_PCT * 256 / 100;
+    uint32_t cursor_delay = (uint32_t)mk_delay * 10;
+    uint32_t cursor_ramp  = (uint32_t)mk_time_to_max * (mk_interval ? mk_interval : 1);
+    uint32_t scroll_delay = (uint32_t)mk_wheel_delay * 10;
+    uint32_t scroll_ramp  = (uint32_t)mk_wheel_time_to_max * (mk_wheel_interval ? mk_wheel_interval : 1);
 
     static uint16_t last_mouse_time = 0;
     if (timer_elapsed(last_mouse_time) < interval) return;
@@ -216,9 +202,12 @@ void analog_mousekey_task(void) {
             uint8_t  idx   = i;
             uint16_t depth = get_key_depth(analog_key_row[idx], analog_key_col[idx]);
             uint32_t fraction = compute_speed_fraction(depth, curve, deadzone);
+            uint32_t press_q8 = mid_fraction ? (fraction * 256 / mid_fraction) : 0;
+            if (press_q8 > press_max_q8) press_q8 = press_max_q8;
+
             uint32_t hold_ms  = snipe_active ? 0 : timer_elapsed32(analog_key_press_time[idx]);
-            uint16_t unit     = qmk_cursor_unit(hold_ms, cursor_max_speed);
-            uint64_t speed_q8 = (uint64_t)unit * fraction * interval * 256 / (1000ULL * (mk_interval ? mk_interval : 1));
+            uint32_t time_q8  = time_mult_q8(hold_ms, snipe_active, cursor_delay, cursor_ramp);
+            uint64_t speed_q8 = (uint64_t)cursor_base * press_q8 * time_q8 * interval / (256ULL * (mk_interval ? mk_interval : 1));
 
             dx_q8 += (int32_t)speed_q8 * dir_dx[i];
             dy_q8 += (int32_t)speed_q8 * dir_dy[i];
@@ -230,9 +219,12 @@ void analog_mousekey_task(void) {
             uint8_t  idx   = 4 + i;
             uint16_t depth = get_key_depth(analog_key_row[idx], analog_key_col[idx]);
             uint32_t fraction = compute_speed_fraction(depth, curve, deadzone);
+            uint32_t press_q8 = mid_fraction ? (fraction * 256 / mid_fraction) : 0;
+            if (press_q8 > press_max_q8) press_q8 = press_max_q8;
+
             uint32_t hold_ms  = snipe_active ? 0 : timer_elapsed32(analog_key_press_time[idx]);
-            uint16_t unit     = qmk_scroll_unit(hold_ms, scroll_max_speed);
-            uint64_t speed_q8 = (uint64_t)unit * fraction * interval * 256 / (1000ULL * (mk_wheel_interval ? mk_wheel_interval : 1));
+            uint32_t time_q8  = time_mult_q8(hold_ms, snipe_active, scroll_delay, scroll_ramp);
+            uint64_t speed_q8 = (uint64_t)scroll_base * press_q8 * time_q8 * interval / (256ULL * (mk_wheel_interval ? mk_wheel_interval : 1));
 
             if (i < 2) {
                 dv_q8 += (i == 0) ? (int32_t)speed_q8 : -(int32_t)speed_q8;
