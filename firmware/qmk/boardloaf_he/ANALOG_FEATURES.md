@@ -166,7 +166,7 @@ Deadzone can be set 0–100 (% of travel). Depth below deadzone yields zero spee
 QMK's default mousekey speed is the **normal-press reference**, not the full-press reference. Most keys are pressed well before bottoming out, so that is where the default QMK feel should land:
 
 - `AM_PRESS_REF_PCT` (30%) travel → 1× QMK default mousekey speed
-- Full press → `AM_PRESS_FULL_PCT` (300% = 3× QMK default), capped
+- Full press → `AM_PRESS_FULL_PCT` (200% = 2× QMK default), capped
 - Shallow press → proportionally slower
 - Deadzone → zero speed
 
@@ -175,10 +175,10 @@ The press curve is normalised at `AM_PRESS_REF_PCT`, so changing `an_curve_expon
 Time-based acceleration is a power curve, not a linear ramp:
 
 - Delay comes from QMK: `mk_delay`.
-- Window is `mk_time_to_max × mk_interval`, capped at `AM_TIME_RAMP_MAX_MS` (300 ms) so it is actually felt.
+- Window is `mk_time_to_max × mk_interval`, capped at `AM_TIME_RAMP_MAX_MS` (400 ms) so it is actually felt.
 - After the delay, speed ramps by `(elapsed / window)^AM_TIME_EXP`.
 - `AM_TIME_EXP = 2` gives a back-loaded, quadratic ramp.
-- Maximum time multiplier is `AM_TIME_FULL_PCT` (300% = 3×).
+- Maximum time multiplier is `AM_TIME_FULL_PCT` (175% = 1.75×).
 - Snipe disables time acceleration and then divides movement, preserving precision mode.
 
 The analog max-speed fields are relative multipliers with their historical defaults:
