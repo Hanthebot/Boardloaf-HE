@@ -161,6 +161,24 @@ Exponent 1–5: `1` = linear/reactive, `2` = quadratic (balance), `3+` = cubic+ 
 
 Deadzone can be set 0–100 (% of travel). Depth below deadzone yields zero speed. This prevents cursor drift from resting fingers.
 
+### QMK-Compatible Speed Ramp
+
+The analog layer does not invent its own speed scale. At full press it follows QMK's mousekey speed ramp:
+
+- Initial unit = QMK `QS_mousekey_move_delta`
+- Ramp starts after QMK `mk_delay` (`MOUSEKEY_DELAY`)
+- Ramps over QMK `mk_time_to_max` events spaced by `mk_interval`
+- Max unit = QMK `mk_max_speed` (cursor) / `mk_wheel_max_speed` (scroll)
+
+Press depth scales that QMK speed from 0 to 100% via the curve above. A full press therefore feels like a standard QMK mousekey; a partial press is proportionally slower.
+
+The analog max-speed fields act as relative multipliers with their historical defaults:
+
+- `an_max_speed = 10` → 1× QMK cursor max
+- `an_scroll_max = 5` → 1× QMK wheel max
+
+`an_interval_ms` changes report rate, not units/second: speed is scaled to the report interval, and a Q8.8 residual accumulator preserves fractional movement. So 1 ms reports (1000 Hz) have the same speed feel as 10 ms or 20 ms reports. Snipe uses the initial QMK unit and then divides, keeping precision mode slow and predictable.
+
 ### Key Position Tracking
 
 **File:** `he_analog_mousekey.c`
@@ -204,7 +222,7 @@ Runtime counterparts in `he_config_t` are loaded from EEPROM in `keyboard_post_i
 
 ### VIA / Webapp Configuration (optional)
 
-Six parameters are accessible via VIA raw HID: curve, deadzone, max speed, snipe divisor (IDs 18–21), scroll max (ID 25), and interval (ID 26). Each is a single byte — get/set with immediate effect on runtime config, saved to EEPROM on set.
+Six parameters are accessible via VIA raw HID: curve, deadzone, max speed, snipe divisor (IDs 18–21), scroll max (ID 25), and interval (ID 26). Each is a single byte — get/set with immediate effect on runtime config, saved to EEPROM on set. Max speed and scroll max are relative multipliers: `10` and `5` respectively mean 1× QMK's `mk_max_speed` / `mk_wheel_max_speed`.
 
 **No webapp configuration is required.** The firmware ships with usable defaults, and the runtime values are sanitised on read, so an old/incompatible EEPROM or a bogus VIA write cannot disable movement. A webapp UI for these parameters is optional; the existing calibration webapp can be extended later if desired.
 
@@ -220,7 +238,7 @@ Workaround: assign analog cursor/scroll keys to the half connected via USB (typi
 
 | File                     | Lines | Role |
 |--------------------------|-------|------|
-| `he_analog_mousekey.c`   | 183   | Stock/AM keycode mapping, tracking, curve math, task loop |
+| `he_analog_mousekey.c`   | 274   | Stock/AM keycode mapping, tracking, QMK speed ramp, fixed-point task loop |
 | `he_analog_mousekey.h`   | 22    | API, index constants |
 | `boardloaf_he.c`         | +47   | Delegate to module, analog EEPROM defaults/migration |
 | `he_switch_matrix.h`     | +17   | EEPROM + runtime fields |
@@ -348,6 +366,7 @@ Use this to confirm implementation quality across all branches:
 - [ ] Analog keycodes are consumed, so default QMK mousekey movement is suppressed
 - [ ] `analog_mousekey_task()` rate-limited via `an_interval_ms`
 - [ ] Exponential curve: depth→speed mapping monotonic for exponent 1–5
+- [ ] Speed ramp follows QMK `mk_delay`/`mk_time_to_max` and is disabled by snipe
 - [ ] Deadzone correctly suppresses speed for depth ≤ threshold
 - [ ] Snipe divisor applied to cursor only (not scroll)
 - [ ] Scroll reported via `v`/`h` axes independently

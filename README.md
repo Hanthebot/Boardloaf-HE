@@ -57,7 +57,7 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
 
 ## Features
 - Supports both APC and rapid trigger
-- Analog mouse keys driven by press depth: assign the stock Mouse/Wheel keycodes in Vial (hold Mouse Accel 0 for snipe); no webapp configuration required
+- Analog mouse keys driven by press depth, using QMK's existing mousekey speed ramp: assign the stock Mouse/Wheel keycodes in Vial (hold Mouse Accel 0 for snipe); no webapp configuration required
 - Cheap, simple, and working
 - 3 multiplexor on each side, scanning 6 keys per mux
 
