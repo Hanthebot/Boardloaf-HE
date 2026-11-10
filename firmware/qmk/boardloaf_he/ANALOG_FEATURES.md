@@ -142,24 +142,19 @@ housekeeping_task_kb()      ──► analog_mousekey_task()
                               6. host_mouse_send(&report)
 ```
 
-### Speed Curve
+### Press Curve
 
-`compute_speed_fraction()` applies an **exponential curve**:
+`press_coeff_q8()` applies an **exponential curve** to normalized depth:
 
 ```c
-effective = depth - deadzone
-max_range = 1000 - deadzone
-fraction = effective                          // for exponent=1 (linear)
-fraction = effective² / max_range             // for exponent=2 (quadratic, default)
-fraction = effective³ / max_range²            // for exponent=3 (cubic)
-...
+c_press = clamp((depth / 1000)^E, AM_MIN_PRESS_PCT, 1)
 ```
 
-Implemented as iterative multiplication with no lookup table (~50 instructions per key).
+Implemented as iterative multiplication with no lookup table.
 
 Exponent 1–5: `1` = linear/reactive, `2` = quadratic (balance), `3+` = cubic+ (precision at shallow depth, speed at bottom).
 
-There is no deadzone in the analog mouse path. Any active key gets at least `AM_MIN_PRESS_PCT` (30%), so shallow presses still move.
+There is no deadzone in the analog mouse path. Any active key gets at least `AM_MIN_PRESS_PCT` (2%), so shallow presses still move, but they stay slow and distinct from mid/deep presses.
 
 ### Speed Mapping
 
@@ -172,11 +167,11 @@ speed   = QMK_base * c_press * c_time * (report_interval / MOUSEKEY_INTERVAL)
 ```
 
 - `QMK_base = QS_mousekey_move_delta * mk_max_speed` (QMK's max per-event unit)
-- `C_min = AM_MIN_PRESS_PCT` (30%)
+- `C_min = AM_MIN_PRESS_PCT` (2%)
 - `C_start = AM_TIME_START_PCT` (50%)
-- `C_max = AM_TIME_MAX_PCT` (150%)
-- `T = min(mk_time_to_max * mk_interval, AM_TIME_RAMP_MAX_MS)` (400 ms cap)
-- `E = an_curve_exponent` (default 1 = linear)
+- `C_max = AM_TIME_MAX_PCT` (130%)
+- `T = min(mk_time_to_max * mk_interval, AM_TIME_RAMP_MAX_MS)` (800 ms cap)
+- `E = an_curve_exponent` (default 2 = quadratic)
 - `t` = time since the key was pressed
 
 `c_press` is a multiplier with a floor: `max(C_min, depth^E)`. It is not `C_min + depth`. `c_time` is also a multiplier: it starts at `C_start` and ramps quadratically to `C_max`.
@@ -222,7 +217,7 @@ New fields in `eeprom_he_config_t`:
 | Field              | Bytes | Default | Range |
 |--------------------|-------|---------|-------|
 | `an_deadzone_pct`  | 1     | 0       | 0–100 (legacy, unused by mousekey) |
-| `an_curve_exponent`| 1     | 1       | 1–5   |
+| `an_curve_exponent`| 1     | 2       | 1–5   |
 | `an_max_speed`     | 1     | 10      | 1–127 |
 | `an_snipe_divisor` | 1     | 10      | 1–100 |
 | `an_scroll_max`    | 1     | 5       | 1–127 |
@@ -241,7 +236,7 @@ Bump `AM_EEPROM_VERSION` only when the **meaning or scale** of a stored field ch
 - replace a field only when it still equals the old default,
 - bump the version afterward so the migration runs once.
 
-The current `0xA5 → 0xA6` migration does exactly that: it updates `an_deadzone_pct` only if it was `10` (old default) and `an_curve_exponent` only if it was `2` (old default). All other analog settings are preserved. Per-key HE calibration and Vial keymaps are not touched.
+The current migration does exactly that: `0xA6 → 0xA7` updates `an_curve_exponent` only if it was `1` (old default), and `0xA5 → 0xA7` updates `an_deadzone_pct` only if it was `10` and `an_curve_exponent` only if it was `2` (old defaults). All other analog settings are preserved. Per-key HE calibration and Vial keymaps are not touched.
 
 Runtime counterparts in `he_config_t` are loaded from EEPROM in `keyboard_post_init_kb()` and updated live via VIA (saved to EEPROM on set).
 
@@ -410,9 +405,10 @@ Use this to confirm implementation quality across all branches:
 - [ ] `KC_ACL0` works as the Vial-assignable snipe key
 - [ ] Analog keycodes are consumed, so default QMK mousekey movement is suppressed
 - [ ] `analog_mousekey_task()` rate-limited via `an_interval_ms`
-- [ ] Exponential curve: depth→speed mapping monotonic for exponent 1–5
-- [ ] Full press follows QMK's mousekey speed curve over time
-- [ ] Key depth scales that curve down; snipe stays slow and predictable
+- [ ] Shallow / regular / deep presses are visibly distinct
+- [ ] Quadratic press curve with low floor keeps shallow presses usable
+- [ ] Time ramp is long-lasting and ends at a moderate multiplier
+- [ ] Snipe stays slow and predictable
 - [ ] Deadzone suppresses resting noise, but shallow presses above it still move
 - [ ] First report after press is forced without waiting for the report interval
 - [ ] Snipe divisor applied to cursor only (not scroll)

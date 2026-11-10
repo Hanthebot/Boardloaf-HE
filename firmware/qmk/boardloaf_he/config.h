@@ -37,7 +37,7 @@
 #define EECONFIG_KB_DATA_SIZE 231
 
 #define AM_DEADZONE_PCT      0
-#define AM_CURVE_EXPONENT    1
+#define AM_CURVE_EXPONENT    2
 #define AM_MAX_SPEED         10
 #define AM_SNIPE_DIVISOR     10
 #define AM_SCROLL_MAX        5
@@ -46,17 +46,18 @@
 // Multiplicative coefficients, not offsets:
 //   press coefficient = max(AM_MIN_PRESS_PCT, depth^curve)
 //   time coefficient  = AM_TIME_START_PCT + (AM_TIME_MAX_PCT - AM_TIME_START_PCT) * (t/T)^AM_TIME_EXP
-#define AM_MIN_PRESS_PCT     30
+#define AM_MIN_PRESS_PCT     2
 #define AM_TIME_START_PCT    50
-#define AM_TIME_MAX_PCT      150
+#define AM_TIME_MAX_PCT      130
 #define AM_TIME_EXP          2
-#define AM_TIME_RAMP_MAX_MS  400
+#define AM_TIME_RAMP_MAX_MS  800
 
 // Stored in an_reserved[0] so an EEPROM written by an older firmware
 // (before the analog fields existed) is migrated to the defaults instead
 // of picking up random bytes as curve/deadzone values.
-#define AM_EEPROM_VERSION        0xA6
-#define AM_LEGACY_EEPROM_VERSION 0xA5
+#define AM_EEPROM_VERSION            0xA7
+#define AM_LEGACY_EEPROM_VERSION_0xA6 0xA6
+#define AM_LEGACY_EEPROM_VERSION     0xA5
 
 // Build-time switch: 1 = analog mousekey feature, 0 = stock QMK mousekeys.
 #ifndef ANALOG_MOUSEKEY_ENABLE

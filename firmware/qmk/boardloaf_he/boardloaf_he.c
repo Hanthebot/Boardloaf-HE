@@ -78,8 +78,14 @@ void keyboard_post_init_kb(void) {
     // change.  For default-only changes, preserve user values and replace
     // only values that still equal the old default.
     if (eeprom_he_config.an_reserved[0] != AM_EEPROM_VERSION) {
-        if (eeprom_he_config.an_reserved[0] == AM_LEGACY_EEPROM_VERSION) {
-            // 0xA5 -> 0xA6: deadzone default 10 -> 2, curve default 2 -> 1.
+        uint8_t ver = eeprom_he_config.an_reserved[0];
+        if (ver == AM_LEGACY_EEPROM_VERSION_0xA6) {
+            // 0xA6 -> 0xA7: default curve 1 -> 2. Keep custom values.
+            if (eeprom_he_config.an_curve_exponent == 1) {
+                eeprom_he_config.an_curve_exponent = AM_CURVE_EXPONENT;
+            }
+        } else if (ver == AM_LEGACY_EEPROM_VERSION) {
+            // 0xA5 -> 0xA7: deadzone default 10 -> 0, curve default 2 -> 2.
             if (eeprom_he_config.an_deadzone_pct == 10) {
                 eeprom_he_config.an_deadzone_pct = AM_DEADZONE_PCT;
             }
