@@ -198,7 +198,7 @@ uint8_t analog_key_row[10];
 uint8_t analog_key_col[10];
 ```
 
-When an analog keycode is pressed, `analog_mousekey_process_record()` captures the key's matrix position (row, col). The task reads `he_depth[row][col]` for the local half. The local row index depends on which half is master: left-master uses global rows 0–2, right-master uses global rows 3–5 and subtracts `HE_MATRIX_ROWS`. For keys on the **remote half**, depth defaults to 1000 (full speed) — the split transport does not yet sync analog values.
+When an analog keycode is pressed, `analog_mousekey_process_record()` captures the key's matrix position (row, col). The task reads `he_depth[row][col]` for the local half. The local row index depends on which half is master: left-master uses global rows 0–2, right-master uses global rows 3–5 and subtracts `HE_MATRIX_ROWS`. Keys on the **remote half** are not tracked by the analog layer; they fall through to QMK's native mousekey handling instead of being treated as a fake full press.
 
 ### Sniper Key
 
@@ -206,7 +206,7 @@ When an analog keycode is pressed, `analog_mousekey_process_record()` captures t
 
 Because `AM_SNIPE` is not available in Vial's keycode picker, `KC_ACL0` (the stock "mouse acceleration 0" keycode) is repurposed as the snipe key. Since analog movement replaces QMK's acceleration-based movement anyway, this costs nothing and gives Vial users a snipe key without any custom keycode or webapp configuration.
 
-Snipe keeps a minimum of one movement unit per report in each active direction, so a fully pressed key does not become completely stationary when divided by the snipe divisor.
+`KC_ACL0` still passes through to QMK, so it also slows remote-half keys that use QMK's native mousekey handling. Snipe keeps a minimum of one movement unit per report in each active direction, so a fully pressed local key does not become completely stationary when divided by the snipe divisor.
 
 ### EEPROM Config
 
@@ -270,7 +270,7 @@ With `ANALOG_MOUSEKEY_ENABLE=0`, `process_record_kb()` does not intercept `KC_MS
 
 Analog depth data is computed locally on each half but not transmitted across the split serial link. Therefore:
 - **Master half keys**: full analog control (depth from `he_depth`), whether the master is the left or right half
-- **Remote half keys**: fall back to depth 1000 (full speed, no proportional control)
+- **Remote half keys**: fall through to QMK's native mousekey handling (normal QMK acceleration), not a fake full-press analog value
 
 Workaround: assign analog cursor/scroll keys to the half connected via USB. Either half can be master; the local-depth index is offset for a right-side master. A future enhancement could add depth values to the split transport protocol.
 
@@ -414,7 +414,7 @@ Use this to confirm implementation quality across all branches:
 - [ ] Snipe divisor applied to cursor only (not scroll)
 - [ ] Scroll reported via `v`/`h` axes independently
 - [ ] Left-master and right-master local keys both use the correct depth row offset
-- [ ] Remote half keys fall back to depth 1000
+- [ ] Remote half keys fall through to QMK native mousekeys, not fake full-press analog
 - [ ] VIA set/get round-trips correctly for all 6 parameters
 - [ ] EEPROM init + load handles new fields without data corruption
 - [ ] No regressions in APC/Rapid Trigger key press detection

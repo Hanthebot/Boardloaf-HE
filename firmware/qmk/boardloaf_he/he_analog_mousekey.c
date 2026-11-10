@@ -66,6 +66,10 @@ static int8_t analog_mousekey_slot(uint16_t keycode) {
     }
 }
 
+static bool analog_key_is_local(uint8_t row) {
+    return is_keyboard_left() ? (row < HE_MATRIX_ROWS) : (row >= HE_MATRIX_ROWS);
+}
+
 bool analog_mousekey_process_record(uint16_t keycode, keyrecord_t *record) {
     int8_t idx = analog_mousekey_slot(keycode);
     if (idx < 0) {
@@ -77,13 +81,21 @@ bool analog_mousekey_process_record(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
+    // Remote-half keys have no analog depth.  Let QMK handle them as normal
+    // mousekeys instead of pretending they are fully pressed.
+    if (idx != AM_SNIPE_IDX && !analog_key_is_local(record->event.key.row)) {
+        return false;
+    }
+
     if (idx == AM_SNIPE_IDX) {
         if (record->event.pressed) {
             analog_activity_mask |= AM_SNIPE_BIT;
         } else {
             analog_activity_mask &= ~AM_SNIPE_BIT;
         }
-        return true;
+        // Let stock KC_ACL0 reach QMK too, so snipe also slows remote-half
+        // keys that fall through to QMK's native mousekey handling.
+        return false;
     }
 
     if (record->event.pressed) {
@@ -118,9 +130,9 @@ static uint32_t press_coeff_q8(uint16_t depth, uint8_t exponent) {
 static uint16_t get_key_depth(uint8_t row, uint8_t col) {
     // The local half always stores depth in local rows 0..HE_MATRIX_ROWS-1.
     // On a left master the right half's global rows are 3..5; on a right
-    // master the left half's global rows are 0..2.  Only the master's own
-    // keys have depth data; the remote half still falls back to full speed
-    // because the half-duplex V1 split transport does not carry analog values.
+    // master the left half's global rows are 0..2.  Remote keys are not
+    // tracked by the analog layer any more, so this fallback is only a
+    // safety net for malformed positions.
     if (col >= MATRIX_COLS) return 1000;
 
     if (is_keyboard_left()) {
