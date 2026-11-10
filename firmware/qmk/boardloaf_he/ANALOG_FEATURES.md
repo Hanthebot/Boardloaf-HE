@@ -222,7 +222,17 @@ New fields in `eeprom_he_config_t`:
 
 Total EEPROM: 231 bytes (was 217).
 
-`an_reserved[0]` stores `AM_EEPROM_VERSION`. On boot, if the byte does not match, the analog fields are migrated to the defaults above and written back. This keeps boards flashed over an older EEPROM from interpreting leftover bytes as curve/deadzone values.
+`an_reserved[0]` stores `AM_EEPROM_VERSION`. On boot, if the byte does not match, the analog fields are migrated and written back. This keeps boards flashed over an older EEPROM from interpreting leftover bytes as curve/deadzone values.
+
+**Version bump rule**
+
+Bump `AM_EEPROM_VERSION` only when the **meaning or scale** of a stored field changes. Do not bump for code-only changes, documentation changes, or default-only changes. For default-only changes, use a targeted migration:
+
+- preserve custom values,
+- replace a field only when it still equals the old default,
+- bump the version afterward so the migration runs once.
+
+The current `0xA5 → 0xA6` migration does exactly that: it updates `an_deadzone_pct` only if it was `10`, and `an_curve_exponent` only if it was `2`. All other analog settings are preserved. Per-key HE calibration and Vial keymaps are not touched.
 
 Runtime counterparts in `he_config_t` are loaded from EEPROM in `keyboard_post_init_kb()` and updated live via VIA (saved to EEPROM on set).
 
@@ -231,6 +241,26 @@ Runtime counterparts in `he_config_t` are loaded from EEPROM in `keyboard_post_i
 Six parameters are accessible via VIA raw HID: curve, deadzone, max speed, snipe divisor (IDs 18–21), scroll max (ID 25), and interval (ID 26). Each is a single byte — get/set with immediate effect on runtime config, saved to EEPROM on set. Max speed and scroll max are relative multipliers: `10` and `5` respectively mean 1× QMK's `mk_max_speed` / `mk_wheel_max_speed`.
 
 **No webapp configuration is required.** The firmware ships with usable defaults, and the runtime values are sanitised on read, so an old/incompatible EEPROM or a bogus VIA write cannot disable movement. A webapp UI for these parameters is optional; the existing calibration webapp can be extended later if desired.
+
+### Build Variants
+
+The analog feature is a compile-time switch:
+
+```make
+# analog mousekey (default)
+qmk compile -kb boardloaf_he -km vial
+
+# stock QMK mouse keys
+qmk compile -kb boardloaf_he -km vial_default
+```
+
+`vial_default` is the same Vial keymap/layout, but its `rules.mk` adds:
+
+```make
+OPT_DEFS += -DANALOG_MOUSEKEY_ENABLE=0
+```
+
+With `ANALOG_MOUSEKEY_ENABLE=0`, `process_record_kb()` does not intercept `KC_MS_*`/`KC_WH_*`, so QMK's normal mousekey handling is used. The analog EEPROM fields still exist for layout compatibility, but they are not used.
 
 ### Split Keyboard Limitation
 

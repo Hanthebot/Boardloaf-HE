@@ -47,7 +47,13 @@
 // Stored in an_reserved[0] so an EEPROM written by an older firmware
 // (before the analog fields existed) is migrated to the defaults instead
 // of picking up random bytes as curve/deadzone values.
-#define AM_EEPROM_VERSION    0xA6
+#define AM_EEPROM_VERSION        0xA6
+#define AM_LEGACY_EEPROM_VERSION 0xA5
+
+// Build-time switch: 1 = analog mousekey feature, 0 = stock QMK mousekeys.
+#ifndef ANALOG_MOUSEKEY_ENABLE
+#    define ANALOG_MOUSEKEY_ENABLE 1
+#endif
 
 #define VIA_CUSTOM_LIGHTING_ENABLE
 

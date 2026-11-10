@@ -73,15 +73,28 @@ void keyboard_post_init_kb(void) {
         eeconfig_read_kb_datablock(&eeprom_he_config, 0, EECONFIG_KB_DATA_SIZE);
     }
 
-    // Migrate an EEPROM written before the analog fields existed.  Without
-    // this, the extra bytes would be interpreted as curve/deadzone/etc.
+    // Migrate analog EEPROM fields.  Keep custom values when possible.
+    // Version rule: only bump AM_EEPROM_VERSION when stored field semantics
+    // change.  For default-only changes, preserve user values and replace
+    // only values that still equal the old default.
     if (eeprom_he_config.an_reserved[0] != AM_EEPROM_VERSION) {
-        eeprom_he_config.an_deadzone_pct   = AM_DEADZONE_PCT;
-        eeprom_he_config.an_curve_exponent = AM_CURVE_EXPONENT;
-        eeprom_he_config.an_max_speed      = AM_MAX_SPEED;
-        eeprom_he_config.an_snipe_divisor  = AM_SNIPE_DIVISOR;
-        eeprom_he_config.an_scroll_max     = AM_SCROLL_MAX;
-        eeprom_he_config.an_interval_ms    = AM_INTERVAL_MS;
+        if (eeprom_he_config.an_reserved[0] == AM_LEGACY_EEPROM_VERSION) {
+            // 0xA5 -> 0xA6: deadzone default 10 -> 2, curve default 2 -> 1.
+            if (eeprom_he_config.an_deadzone_pct == 10) {
+                eeprom_he_config.an_deadzone_pct = AM_DEADZONE_PCT;
+            }
+            if (eeprom_he_config.an_curve_exponent == 2) {
+                eeprom_he_config.an_curve_exponent = AM_CURVE_EXPONENT;
+            }
+        } else {
+            // Older/blank EEPROM: initialize all analog fields.
+            eeprom_he_config.an_deadzone_pct   = AM_DEADZONE_PCT;
+            eeprom_he_config.an_curve_exponent = AM_CURVE_EXPONENT;
+            eeprom_he_config.an_max_speed      = AM_MAX_SPEED;
+            eeprom_he_config.an_snipe_divisor  = AM_SNIPE_DIVISOR;
+            eeprom_he_config.an_scroll_max     = AM_SCROLL_MAX;
+            eeprom_he_config.an_interval_ms    = AM_INTERVAL_MS;
+        }
         for (uint8_t i = 0; i < 8; i++) eeprom_he_config.an_reserved[i] = 0;
         eeprom_he_config.an_reserved[0] = AM_EEPROM_VERSION;
         am_config_migrated              = true;
@@ -131,11 +144,15 @@ void keyboard_post_init_kb(void) {
 uint16_t analog_activity_mask = 0;
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
+#if ANALOG_MOUSEKEY_ENABLE
     if (analog_mousekey_process_record(keycode, record)) return false;
+#endif
     return process_record_user(keycode, record);
 }
 
 void housekeeping_task_kb(void) {
+#if ANALOG_MOUSEKEY_ENABLE
     analog_mousekey_task();
+#endif
     housekeeping_task_user();
 }
