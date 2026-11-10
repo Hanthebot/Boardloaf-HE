@@ -116,11 +116,20 @@ static uint32_t press_coeff_q8(uint16_t depth, uint8_t exponent) {
 }
 
 static uint16_t get_key_depth(uint8_t row, uint8_t col) {
-    // Only the local half has depth data.  On the remote half (rows >=
-    // HE_MATRIX_ROWS) fall back to full speed; the half-duplex V1 split
-    // transport does not carry analog values.
-    if (row >= HE_MATRIX_ROWS || col >= MATRIX_COLS) return 1000;
-    return he_depth[row][col];
+    // The local half always stores depth in local rows 0..HE_MATRIX_ROWS-1.
+    // On a left master the right half's global rows are 3..5; on a right
+    // master the left half's global rows are 0..2.  Only the master's own
+    // keys have depth data; the remote half still falls back to full speed
+    // because the half-duplex V1 split transport does not carry analog values.
+    if (col >= MATRIX_COLS) return 1000;
+
+    if (is_keyboard_left()) {
+        if (row >= HE_MATRIX_ROWS) return 1000;
+        return he_depth[row][col];
+    }
+
+    if (row < HE_MATRIX_ROWS) return 1000;
+    return he_depth[row - HE_MATRIX_ROWS][col];
 }
 
 // Time coefficient in Q8.8: starts at AM_TIME_START_PCT and ramps to

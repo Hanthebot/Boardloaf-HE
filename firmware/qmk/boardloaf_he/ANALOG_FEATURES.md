@@ -198,7 +198,7 @@ uint8_t analog_key_row[10];
 uint8_t analog_key_col[10];
 ```
 
-When an analog keycode is pressed, `analog_mousekey_process_record()` captures the key's matrix position (row, col). The task reads `he_depth[row][col]` for the local half. For keys on the **remote half** (row >= HE_MATRIX_ROWS), depth defaults to 1000 (full speed) — the split transport does not yet sync analog values.
+When an analog keycode is pressed, `analog_mousekey_process_record()` captures the key's matrix position (row, col). The task reads `he_depth[row][col]` for the local half. The local row index depends on which half is master: left-master uses global rows 0–2, right-master uses global rows 3–5 and subtracts `HE_MATRIX_ROWS`. For keys on the **remote half**, depth defaults to 1000 (full speed) — the split transport does not yet sync analog values.
 
 ### Sniper Key
 
@@ -269,16 +269,16 @@ With `ANALOG_MOUSEKEY_ENABLE=0`, `process_record_kb()` does not intercept `KC_MS
 ### Split Keyboard Limitation
 
 Analog depth data is computed locally on each half but not transmitted across the split serial link. Therefore:
-- **Master half keys**: full analog control (depth from `he_depth`)
+- **Master half keys**: full analog control (depth from `he_depth`), whether the master is the left or right half
 - **Remote half keys**: fall back to depth 1000 (full speed, no proportional control)
 
-Workaround: assign analog cursor/scroll keys to the half connected via USB (typically the left half with the default handedness pin assignment). A future enhancement could add depth values to the split transport protocol.
+Workaround: assign analog cursor/scroll keys to the half connected via USB. Either half can be master; the local-depth index is offset for a right-side master. A future enhancement could add depth values to the split transport protocol.
 
 ### File Inventory (mousekey branch)
 
 | File                     | Lines | Role |
 |--------------------------|-------|------|
-| `he_analog_mousekey.c`   | 286   | Stock/AM keycode mapping, tracking, QMK speed ramp, min-speed floor, fixed-point task loop |
+| `he_analog_mousekey.c`   | 271   | Stock/AM keycode mapping, tracking, left/right depth offset, QMK speed ramp, fixed-point task loop |
 | `he_analog_mousekey.h`   | 22    | API, index constants |
 | `boardloaf_he.c`         | +47   | Delegate to module, analog EEPROM defaults/migration |
 | `he_switch_matrix.h`     | +17   | EEPROM + runtime fields |
@@ -413,6 +413,7 @@ Use this to confirm implementation quality across all branches:
 - [ ] First report after press is forced without waiting for the report interval
 - [ ] Snipe divisor applied to cursor only (not scroll)
 - [ ] Scroll reported via `v`/`h` axes independently
+- [ ] Left-master and right-master local keys both use the correct depth row offset
 - [ ] Remote half keys fall back to depth 1000
 - [ ] VIA set/get round-trips correctly for all 6 parameters
 - [ ] EEPROM init + load handles new fields without data corruption
