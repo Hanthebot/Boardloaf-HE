@@ -159,31 +159,40 @@ Implemented as iterative multiplication with no lookup table (~50 instructions p
 
 Exponent 1–5: `1` = linear/reactive, `2` = quadratic (balance), `3+` = cubic+ (precision at shallow depth, speed at bottom).
 
-Deadzone can be set 0–100 (% of travel). Depth below deadzone yields zero speed. This prevents cursor drift from resting fingers.
+There is no deadzone in the analog mouse path. Any active key gets at least `AM_MIN_PRESS_PCT` (30%), so shallow presses still move.
 
 ### Speed Mapping
 
-The analog layer follows QMK's mousekey speed curve exactly, then scales it down by key depth:
+The analog speed is a product of two coefficients, not an additive offset:
 
-- QMK's own ramp is used: `mk_delay`, `mk_interval`, `mk_time_to_max`, `QS_mousekey_move_delta`, and `mk_max_speed`.
-- Full press → the same units-over-time curve as QMK's mouse keys.
-- Shallower press → the same curve scaled down by `compute_speed_fraction()` (deadzone + curve exponent).
-- Deeper press → up to the full QMK curve.
-- Deadzone → zero speed.
-- Any press above the deadzone gets at least `AM_MIN_SPEED_PCT` (10%) so shallow presses are still perceptible.
+```text
+c_press = clamp((depth / 1000)^E, C_min, 1)
+c_time  = C_start + (C_max - C_start) * (min(t, T) / T)^2
+speed   = QMK_base * c_press * c_time * (report_interval / MOUSEKEY_INTERVAL)
+```
 
-So the speed over time (initial step, delay, linear ramp to max) is QMK's, not a custom time multiplier. Key depth only attenuates it. The default deadzone is 2% and the default press curve is linear (`an_curve_exponent = 1`), which gives usable movement very early in the press.
+- `QMK_base = QS_mousekey_move_delta * mk_max_speed` (QMK's max per-event unit)
+- `C_min = AM_MIN_PRESS_PCT` (30%)
+- `C_start = AM_TIME_START_PCT` (50%)
+- `C_max = AM_TIME_MAX_PCT` (150%)
+- `T = min(mk_time_to_max * mk_interval, AM_TIME_RAMP_MAX_MS)` (400 ms cap)
+- `E = an_curve_exponent` (default 1 = linear)
+- `t` = time since the key was pressed
 
-### First-Report Latency
+`c_press` is a multiplier with a floor: `max(C_min, depth^E)`. It is not `C_min + depth`. `c_time` is also a multiplier: it starts at `C_start` and ramps quadratically to `C_max`.
 
-QMK sends the first mouse report immediately on key press. The analog task is rate-limited by `an_interval_ms`, so a naive implementation would wait up to one interval before the first movement. A force-update flag makes the first report happen on the next `housekeeping_task_kb()` call after the press, without waiting for the interval. That keeps first-movement latency close to QMK's.
+Snipe sets `c_time = 1.0` and then divides movement, keeping precision mode slow and predictable.
 
 The analog max-speed fields are relative multipliers with their historical defaults:
 
 - `an_max_speed = 10` → 1× QMK cursor base
 - `an_scroll_max = 5` → 1× QMK wheel base
 
-`an_interval_ms` changes report rate, not units/second: speed is scaled to the report interval, and a Q8.8 residual accumulator preserves fractional movement. So 1 ms reports (1000 Hz) have the same speed feel as 10 ms or 20 ms reports. Snipe uses the initial QMK unit and then divides movement, keeping precision mode slow and predictable.
+`an_interval_ms` changes report rate, not units/second: the report interval is part of the equation, and a Q8.8 residual accumulator preserves fractional movement. So 1 ms reports (1000 Hz) have the same speed feel as 10 ms or 20 ms reports.
+
+### First-Report Latency
+
+QMK sends the first mouse report immediately on key press. The analog task is rate-limited by `an_interval_ms`, so a naive implementation would wait up to one interval before the first movement. A force-update flag makes the first report happen on the next `housekeeping_task_kb()` call after the press, without waiting for the interval. That keeps first-movement latency close to QMK's.
 
 ### Key Position Tracking
 
@@ -212,7 +221,7 @@ New fields in `eeprom_he_config_t`:
 
 | Field              | Bytes | Default | Range |
 |--------------------|-------|---------|-------|
-| `an_deadzone_pct`  | 1     | 2       | 0–100 |
+| `an_deadzone_pct`  | 1     | 0       | 0–100 (legacy, unused by mousekey) |
 | `an_curve_exponent`| 1     | 1       | 1–5   |
 | `an_max_speed`     | 1     | 10      | 1–127 |
 | `an_snipe_divisor` | 1     | 10      | 1–100 |
@@ -232,7 +241,7 @@ Bump `AM_EEPROM_VERSION` only when the **meaning or scale** of a stored field ch
 - replace a field only when it still equals the old default,
 - bump the version afterward so the migration runs once.
 
-The current `0xA5 → 0xA6` migration does exactly that: it updates `an_deadzone_pct` only if it was `10`, and `an_curve_exponent` only if it was `2`. All other analog settings are preserved. Per-key HE calibration and Vial keymaps are not touched.
+The current `0xA5 → 0xA6` migration does exactly that: it updates `an_deadzone_pct` only if it was `10` (old default) and `an_curve_exponent` only if it was `2` (old default). All other analog settings are preserved. Per-key HE calibration and Vial keymaps are not touched.
 
 Runtime counterparts in `he_config_t` are loaded from EEPROM in `keyboard_post_init_kb()` and updated live via VIA (saved to EEPROM on set).
 

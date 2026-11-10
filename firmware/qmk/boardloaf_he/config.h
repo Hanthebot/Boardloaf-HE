@@ -36,13 +36,21 @@
 
 #define EECONFIG_KB_DATA_SIZE 231
 
-#define AM_DEADZONE_PCT      2
+#define AM_DEADZONE_PCT      0
 #define AM_CURVE_EXPONENT    1
-#define AM_MIN_SPEED_PCT     10
 #define AM_MAX_SPEED         10
 #define AM_SNIPE_DIVISOR     10
 #define AM_SCROLL_MAX        5
 #define AM_INTERVAL_MS       10
+
+// Multiplicative coefficients, not offsets:
+//   press coefficient = max(AM_MIN_PRESS_PCT, depth^curve)
+//   time coefficient  = AM_TIME_START_PCT + (AM_TIME_MAX_PCT - AM_TIME_START_PCT) * (t/T)^AM_TIME_EXP
+#define AM_MIN_PRESS_PCT     30
+#define AM_TIME_START_PCT    50
+#define AM_TIME_MAX_PCT      150
+#define AM_TIME_EXP          2
+#define AM_TIME_RAMP_MAX_MS  400
 
 // Stored in an_reserved[0] so an EEPROM written by an older firmware
 // (before the analog fields existed) is migrated to the defaults instead
