@@ -170,8 +170,13 @@ The analog layer follows QMK's mousekey speed curve exactly, then scales it down
 - Shallower press → the same curve scaled down by `compute_speed_fraction()` (deadzone + curve exponent).
 - Deeper press → up to the full QMK curve.
 - Deadzone → zero speed.
+- Any press above the deadzone gets at least `AM_MIN_SPEED_PCT` (10%) so shallow presses are still perceptible.
 
-So the speed over time (initial step, delay, linear ramp to max) is QMK's, not a custom time multiplier. Key depth only attenuates it.
+So the speed over time (initial step, delay, linear ramp to max) is QMK's, not a custom time multiplier. Key depth only attenuates it. The default deadzone is 2% and the default press curve is linear (`an_curve_exponent = 1`), which gives usable movement very early in the press.
+
+### First-Report Latency
+
+QMK sends the first mouse report immediately on key press. The analog task is rate-limited by `an_interval_ms`, so a naive implementation would wait up to one interval before the first movement. A force-update flag makes the first report happen on the next `housekeeping_task_kb()` call after the press, without waiting for the interval. That keeps first-movement latency close to QMK's.
 
 The analog max-speed fields are relative multipliers with their historical defaults:
 
@@ -207,8 +212,8 @@ New fields in `eeprom_he_config_t`:
 
 | Field              | Bytes | Default | Range |
 |--------------------|-------|---------|-------|
-| `an_deadzone_pct`  | 1     | 10      | 0–100 |
-| `an_curve_exponent`| 1     | 2       | 1–5   |
+| `an_deadzone_pct`  | 1     | 2       | 0–100 |
+| `an_curve_exponent`| 1     | 1       | 1–5   |
 | `an_max_speed`     | 1     | 10      | 1–127 |
 | `an_snipe_divisor` | 1     | 10      | 1–100 |
 | `an_scroll_max`    | 1     | 5       | 1–127 |
@@ -239,7 +244,7 @@ Workaround: assign analog cursor/scroll keys to the half connected via USB (typi
 
 | File                     | Lines | Role |
 |--------------------------|-------|------|
-| `he_analog_mousekey.c`   | 266   | Stock/AM keycode mapping, tracking, centred press/time mapping, fixed-point task loop |
+| `he_analog_mousekey.c`   | 286   | Stock/AM keycode mapping, tracking, QMK speed ramp, min-speed floor, fixed-point task loop |
 | `he_analog_mousekey.h`   | 22    | API, index constants |
 | `boardloaf_he.c`         | +47   | Delegate to module, analog EEPROM defaults/migration |
 | `he_switch_matrix.h`     | +17   | EEPROM + runtime fields |
@@ -369,7 +374,8 @@ Use this to confirm implementation quality across all branches:
 - [ ] Exponential curve: depth→speed mapping monotonic for exponent 1–5
 - [ ] Full press follows QMK's mousekey speed curve over time
 - [ ] Key depth scales that curve down; snipe stays slow and predictable
-- [ ] Deadzone correctly suppresses speed for depth ≤ threshold
+- [ ] Deadzone suppresses resting noise, but shallow presses above it still move
+- [ ] First report after press is forced without waiting for the report interval
 - [ ] Snipe divisor applied to cursor only (not scroll)
 - [ ] Scroll reported via `v`/`h` axes independently
 - [ ] Remote half keys fall back to depth 1000

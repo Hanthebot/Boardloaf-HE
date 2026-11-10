@@ -36,8 +36,9 @@
 
 #define EECONFIG_KB_DATA_SIZE 231
 
-#define AM_DEADZONE_PCT      10
-#define AM_CURVE_EXPONENT    2
+#define AM_DEADZONE_PCT      2
+#define AM_CURVE_EXPONENT    1
+#define AM_MIN_SPEED_PCT     10
 #define AM_MAX_SPEED         10
 #define AM_SNIPE_DIVISOR     10
 #define AM_SCROLL_MAX        5
@@ -46,7 +47,7 @@
 // Stored in an_reserved[0] so an EEPROM written by an older firmware
 // (before the analog fields existed) is migrated to the defaults instead
 // of picking up random bytes as curve/deadzone values.
-#define AM_EEPROM_VERSION    0xA5
+#define AM_EEPROM_VERSION    0xA6
 
 #define VIA_CUSTOM_LIGHTING_ENABLE
 

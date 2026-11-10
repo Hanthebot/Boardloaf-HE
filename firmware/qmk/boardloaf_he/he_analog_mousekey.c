@@ -19,6 +19,10 @@ static uint32_t analog_key_press_time[10] = {0};
 static int32_t cursor_res_x = 0, cursor_res_y = 0;
 static int32_t scroll_res_v = 0, scroll_res_h = 0;
 
+// Force one immediate update on the first press instead of waiting for the
+// next report interval.  This keeps first-movement latency close to QMK.
+static bool analog_force_update = false;
+
 // Runtime values are sanitised here so a stale/incompatible EEPROM (or a
 // bogus VIA write) can never disable analog movement completely.
 // Speed and acceleration come from QMK's own mousekey settings (mk_* /
@@ -88,6 +92,7 @@ bool analog_mousekey_process_record(uint16_t keycode, keyrecord_t *record) {
         analog_key_col[idx]       = record->event.key.col;
         analog_key_press_time[idx] = timer_read32();
         analog_activity_mask |= (1 << idx);
+        analog_force_update = true;
     } else {
         analog_activity_mask &= ~(1 << idx);
         analog_key_press_time[idx] = 0;
@@ -175,7 +180,8 @@ void analog_mousekey_task(void) {
     uint8_t scroll_max_speed = (uint8_t)scroll_max;
 
     static uint16_t last_mouse_time = 0;
-    if (timer_elapsed(last_mouse_time) < interval) return;
+    if (!analog_force_update && timer_elapsed(last_mouse_time) < interval) return;
+    analog_force_update = false;
     last_mouse_time = timer_read();
 
     uint16_t cursor_mask = analog_activity_mask & 0x0F;
@@ -216,6 +222,9 @@ void analog_mousekey_task(void) {
             uint8_t  idx   = i;
             uint16_t depth = get_key_depth(analog_key_row[idx], analog_key_col[idx]);
             uint32_t fraction = compute_speed_fraction(depth, curve, deadzone);
+            if (fraction > 0 && fraction < (uint32_t)AM_MIN_SPEED_PCT * 10) {
+                fraction = AM_MIN_SPEED_PCT * 10;
+            }
             uint32_t hold_ms  = snipe_active ? 0 : timer_elapsed32(analog_key_press_time[idx]);
             uint16_t unit     = qmk_cursor_unit(hold_ms, cursor_max_speed);
             uint64_t speed_q8 = (uint64_t)unit * fraction * interval * 256 / (1000ULL * (mk_interval ? mk_interval : 1));
@@ -230,6 +239,9 @@ void analog_mousekey_task(void) {
             uint8_t  idx   = 4 + i;
             uint16_t depth = get_key_depth(analog_key_row[idx], analog_key_col[idx]);
             uint32_t fraction = compute_speed_fraction(depth, curve, deadzone);
+            if (fraction > 0 && fraction < (uint32_t)AM_MIN_SPEED_PCT * 10) {
+                fraction = AM_MIN_SPEED_PCT * 10;
+            }
             uint32_t hold_ms  = snipe_active ? 0 : timer_elapsed32(analog_key_press_time[idx]);
             uint16_t unit     = qmk_scroll_unit(hold_ms, scroll_max_speed);
             uint64_t speed_q8 = (uint64_t)unit * fraction * interval * 256 / (1000ULL * (mk_wheel_interval ? mk_wheel_interval : 1));
