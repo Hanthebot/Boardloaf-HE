@@ -57,7 +57,7 @@ With these things combined, you can get your own HE keyboard in about $12 exclud
 
 ## Features
 - Supports both APC and rapid trigger
-- Analog mouse keys: shallow/regular/deep presses are separated by a quadratic press curve with a low 2% floor, then a long 800 ms time ramp adds speed for sustained holds. QMK's mousekey max speed is the base. Assign the stock Mouse/Wheel keycodes in Vial (hold Mouse Accel 0 for snipe); no webapp configuration required
+- Analog mouse keys: shallow/regular/deep presses use a piecewise press curve (3% → 8% → 20% → 50% → 100% at 0/20/50/80/100% travel), then a long 800 ms time ramp adds speed for sustained holds. QMK's mousekey max speed is the base. Assign the stock Mouse/Wheel keycodes in Vial (hold Mouse Accel 0 for snipe); no webapp configuration required
 - Two Vial builds: `vial` (analog mouse) and `vial_default` (stock QMK mouse keys)
 - Cheap, simple, and working
 - 3 multiplexor on each side, scanning 6 keys per mux

@@ -27,7 +27,6 @@ static bool analog_force_update = false;
 // bogus VIA write) can never disable analog movement completely.
 // Speed and acceleration come from QMK's own mousekey settings (mk_* /
 // MOUSEKEY_*), so the analog feel matches the standard QMK mouse keys.
-#define am_curve()        ((he_config.an_curve_exponent >= 1 && he_config.an_curve_exponent <= 5) ? he_config.an_curve_exponent : AM_CURVE_EXPONENT)
 #define am_max_speed()    ((he_config.an_max_speed >= 1 && he_config.an_max_speed <= 127) ? he_config.an_max_speed : AM_MAX_SPEED)
 #define am_snipe_div()    ((he_config.an_snipe_divisor >= 1 && he_config.an_snipe_divisor <= 100) ? he_config.an_snipe_divisor : AM_SNIPE_DIVISOR)
 #define am_scroll_max()   ((he_config.an_scroll_max >= 1 && he_config.an_scroll_max <= 127) ? he_config.an_scroll_max : AM_SCROLL_MAX)
@@ -111,20 +110,34 @@ bool analog_mousekey_process_record(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
-// Press coefficient in Q8.8: (depth/1000)^exponent, floored at
-// AM_MIN_PRESS_PCT.  This is a multiplier, not an additive offset.
-static uint32_t press_coeff_q8(uint16_t depth, uint8_t exponent) {
-    uint32_t n = depth > 1000 ? 1000 : depth;
-    uint32_t p = n;
-    for (uint8_t i = 1; i < exponent; i++) {
-        p = p * n / 1000;
-    }
+// Piecewise press curve: depth (0..1000) -> % of QMK base speed.
+// Separate shallow / regular / deep anchors make shallow presses visible
+// without making the regular range jump too quickly.
+typedef struct {
+    uint16_t depth;
+    uint8_t  pct;
+} press_anchor_t;
 
-    uint32_t c   = p * 256 / 1000;
-    uint32_t min = AM_MIN_PRESS_PCT * 256 / 100;
-    if (c < min) c = min;
-    if (c > 256) c = 256;
-    return c;
+static const press_anchor_t press_curve[] = {
+    {0, AM_MIN_PRESS_PCT},
+    {200, 8},
+    {500, 20},
+    {800, 50},
+    {1000, 100},
+};
+
+static uint32_t press_coeff_q8(uint16_t depth) {
+    uint16_t n = depth > 1000 ? 1000 : depth;
+
+    for (uint8_t i = 0; i < ARRAY_SIZE(press_curve) - 1; i++) {
+        const press_anchor_t *a = &press_curve[i];
+        const press_anchor_t *b = &press_curve[i + 1];
+        if (n <= b->depth) {
+            uint32_t pct = a->pct + (uint32_t)(n - a->depth) * (b->pct - a->pct) / (b->depth - a->depth);
+            return pct * 256 / 100;
+        }
+    }
+    return 256;
 }
 
 static uint16_t get_key_depth(uint8_t row, uint8_t col) {
@@ -165,7 +178,6 @@ static uint32_t time_coeff_q8(uint32_t hold_ms, bool snipe_active, uint32_t ramp
 
 void analog_mousekey_task(void) {
     uint8_t interval  = am_interval();
-    uint8_t curve     = am_curve();
     uint8_t snipe_div = am_snipe_div();
 
     // QMK base unit = step size * max speed.  The analog max fields are
@@ -224,7 +236,7 @@ void analog_mousekey_task(void) {
         if (cursor_mask & (1 << i)) {
             uint8_t  idx   = i;
             uint16_t depth = get_key_depth(analog_key_row[idx], analog_key_col[idx]);
-            uint32_t c_press = press_coeff_q8(depth, curve);
+            uint32_t c_press = press_coeff_q8(depth);
             uint32_t hold_ms = snipe_active ? 0 : timer_elapsed32(analog_key_press_time[idx]);
             uint32_t c_time  = time_coeff_q8(hold_ms, snipe_active, cursor_ramp);
             uint64_t speed_q8 = (uint64_t)cursor_base * c_press * c_time * interval / (256ULL * (mk_interval ? mk_interval : 1));
@@ -238,7 +250,7 @@ void analog_mousekey_task(void) {
         if (scroll_mask & (1 << i)) {
             uint8_t  idx   = 4 + i;
             uint16_t depth = get_key_depth(analog_key_row[idx], analog_key_col[idx]);
-            uint32_t c_press = press_coeff_q8(depth, curve);
+            uint32_t c_press = press_coeff_q8(depth);
             uint32_t hold_ms = snipe_active ? 0 : timer_elapsed32(analog_key_press_time[idx]);
             uint32_t c_time  = time_coeff_q8(hold_ms, snipe_active, scroll_ramp);
             uint64_t speed_q8 = (uint64_t)scroll_base * c_press * c_time * interval / (256ULL * (mk_wheel_interval ? mk_wheel_interval : 1));

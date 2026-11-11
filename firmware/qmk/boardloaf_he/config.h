@@ -37,18 +37,18 @@
 #define EECONFIG_KB_DATA_SIZE 231
 
 #define AM_DEADZONE_PCT      0
-#define AM_CURVE_EXPONENT    2
+#define AM_CURVE_EXPONENT    2 // reserved; press curve is now anchor-based
 #define AM_MAX_SPEED         10
 #define AM_SNIPE_DIVISOR     10
 #define AM_SCROLL_MAX        5
 #define AM_INTERVAL_MS       10
 
 // Multiplicative coefficients, not offsets:
-//   press coefficient = max(AM_MIN_PRESS_PCT, depth^curve)
+//   press coefficient = piecewise anchors in he_analog_mousekey.c
 //   time coefficient  = AM_TIME_START_PCT + (AM_TIME_MAX_PCT - AM_TIME_START_PCT) * (t/T)^AM_TIME_EXP
-#define AM_MIN_PRESS_PCT     2
+#define AM_MIN_PRESS_PCT     3
 #define AM_TIME_START_PCT    50
-#define AM_TIME_MAX_PCT      130
+#define AM_TIME_MAX_PCT      115
 #define AM_TIME_EXP          2
 #define AM_TIME_RAMP_MAX_MS  800
 

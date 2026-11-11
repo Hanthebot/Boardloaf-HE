@@ -144,37 +144,37 @@ housekeeping_task_kb()      ──► analog_mousekey_task()
 
 ### Press Curve
 
-`press_coeff_q8()` applies an **exponential curve** to normalized depth:
+`press_coeff_q8()` uses a piecewise anchor table to keep shallow, regular, and deep presses distinct without a large jump between them:
 
-```c
-c_press = clamp((depth / 1000)^E, AM_MIN_PRESS_PCT, 1)
-```
+| Depth | Press coefficient |
+|---:|---:|
+| 0% | 3% |
+| 20% | 8% |
+| 50% | 20% |
+| 80% | 50% |
+| 100% | 100% |
 
-Implemented as iterative multiplication with no lookup table.
+Values between anchors are linearly interpolated. This raises shallow presses above the old 2% floor while keeping the regular range slower than the old quadratic curve. The table is in `he_analog_mousekey.c` and is easy to tune.
 
-Exponent 1–5: `1` = linear/reactive, `2` = quadratic (balance), `3+` = cubic+ (precision at shallow depth, speed at bottom).
-
-There is no deadzone in the analog mouse path. Any active key gets at least `AM_MIN_PRESS_PCT` (2%), so shallow presses still move, but they stay slow and distinct from mid/deep presses.
+There is no deadzone in the analog mouse path. `an_curve_exponent` remains stored for EEPROM compatibility but is currently reserved; the anchor table is the active curve.
 
 ### Speed Mapping
 
 The analog speed is a product of two coefficients, not an additive offset:
 
 ```text
-c_press = clamp((depth / 1000)^E, C_min, 1)
+c_press = piecewise_press_curve(depth)   // 3% .. 100%
 c_time  = C_start + (C_max - C_start) * (min(t, T) / T)^2
 speed   = QMK_base * c_press * c_time * (report_interval / MOUSEKEY_INTERVAL)
 ```
 
 - `QMK_base = QS_mousekey_move_delta * mk_max_speed` (QMK's max per-event unit)
-- `C_min = AM_MIN_PRESS_PCT` (2%)
 - `C_start = AM_TIME_START_PCT` (50%)
-- `C_max = AM_TIME_MAX_PCT` (130%)
+- `C_max = AM_TIME_MAX_PCT` (115%)
 - `T = min(mk_time_to_max * mk_interval, AM_TIME_RAMP_MAX_MS)` (800 ms cap)
-- `E = an_curve_exponent` (default 2 = quadratic)
 - `t` = time since the key was pressed
 
-`c_press` is a multiplier with a floor: `max(C_min, depth^E)`. It is not `C_min + depth`. `c_time` is also a multiplier: it starts at `C_start` and ramps quadratically to `C_max`.
+`c_press` is a multiplier from the anchor table. `c_time` is also a multiplier: it starts at `C_start` and ramps quadratically to `C_max`.
 
 Snipe sets `c_time = 1.0` and then divides movement, keeping precision mode slow and predictable.
 
@@ -236,13 +236,13 @@ Bump `AM_EEPROM_VERSION` only when the **meaning or scale** of a stored field ch
 - replace a field only when it still equals the old default,
 - bump the version afterward so the migration runs once.
 
-The current migration does exactly that: `0xA6 → 0xA7` updates `an_curve_exponent` only if it was `1` (old default), and `0xA5 → 0xA7` updates `an_deadzone_pct` only if it was `10` and `an_curve_exponent` only if it was `2` (old defaults). All other analog settings are preserved. Per-key HE calibration and Vial keymaps are not touched.
+The current migration does exactly that: `0xA6 → 0xA7` updates `an_curve_exponent` only if it was `1` (old default), and `0xA5 → 0xA7` updates `an_deadzone_pct` only if it was `10` and `an_curve_exponent` only if it was `2` (old defaults). `an_curve_exponent` is now reserved, so this migration only keeps the stored value tidy. All other analog settings are preserved. Per-key HE calibration and Vial keymaps are not touched.
 
 Runtime counterparts in `he_config_t` are loaded from EEPROM in `keyboard_post_init_kb()` and updated live via VIA (saved to EEPROM on set).
 
 ### VIA / Webapp Configuration (optional)
 
-Six parameters are accessible via VIA raw HID: curve, deadzone, max speed, snipe divisor (IDs 18–21), scroll max (ID 25), and interval (ID 26). Each is a single byte — get/set with immediate effect on runtime config, saved to EEPROM on set. Max speed and scroll max are relative multipliers: `10` and `5` respectively mean 1× QMK's `mk_max_speed` / `mk_wheel_max_speed`.
+Six parameters are accessible via VIA raw HID: curve (reserved), deadzone (reserved/ignored), max speed, snipe divisor (IDs 18–21), scroll max (ID 25), and interval (ID 26). Each is a single byte — get/set with immediate effect on runtime config, saved to EEPROM on set. Max speed and scroll max are relative multipliers: `10` and `5` respectively mean 1× QMK's `mk_max_speed` / `mk_wheel_max_speed`.
 
 **No webapp configuration is required.** The firmware ships with usable defaults, and the runtime values are sanitised on read, so an old/incompatible EEPROM or a bogus VIA write cannot disable movement. A webapp UI for these parameters is optional; the existing calibration webapp can be extended later if desired.
 
